@@ -93,12 +93,13 @@ export function ChatPage({ onNext }) {
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
       setMessages([]);
-      alert("Suhbatdosh suhbatni tark etdi.");
+      
+      // Alert olib tashlandi, shunda kod to'xtab qolmaydi va darhol yangi qidiruvga tushadi
       
       if (currentUser) {
         setIsSearching(true);
         const myId = currentUser.telegram_id || currentUser.tg_id;
-        const blacklist = getBlacklist(); // <-- GET qilib yuborilyapti
+        const blacklist = getBlacklist(); 
         socket.emit('find_match', { tg_id: myId, blacklist });
       }
     });
@@ -121,7 +122,7 @@ export function ChatPage({ onNext }) {
     if (currentUser) {
       setIsSearching(true);
       const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist(); // <-- GET qilib yuborilyapti
+      const blacklist = getBlacklist(); 
       socket.emit('find_match', { tg_id: myId, blacklist });
     }
   };
@@ -173,7 +174,7 @@ export function ChatPage({ onNext }) {
     if (currentUser) {
       setIsSearching(true);
       const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist(); // <-- GET qilib yuborilyapti
+      const blacklist = getBlacklist(); 
       socket.emit('find_match', { tg_id: myId, blacklist });
     }
   };
