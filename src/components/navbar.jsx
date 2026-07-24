@@ -1,15 +1,32 @@
 // import { USERS } from "../config/bd"; // USERS massivini import qilamiz
+import { useState, useEffect } from "react";
 import { fetchUser } from "../services/api";
 import { PlanBadge } from "./PlanBadge";
 
-//fetch qilingan user ma'lumotlarini olish
-const fetchCurrentUser = async () => {
-  const user = await fetchUser();
-  console.log("Current User:", user);
-  return user;
-};
+
 
 export function Navbar() {
+
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        async function loadUser() {
+            const data = await fetchUser();
+            if (data) {
+                setUser(data);
+            }
+        }
+        loadUser();
+    }, []);
+
+    if (!user) {
+        return (
+            <header className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>Yuklanmoqda... (Yoki botdan /start bosing)</div>
+            </header>
+        );
+    }
+
     return (
         <>
             {/* navbar */}
@@ -19,8 +36,8 @@ export function Navbar() {
             >
                 <div className="flex items-center gap-3">
                     <img
-                        src={fetchCurrentUser.avatar}
-                        alt={fetchCurrentUser.name}
+                        src={user?.avatar}
+                        alt={user?.name}
                         className="rounded-full object-cover flex-shrink-0"
                         style={{
                             width: 38,
@@ -31,14 +48,14 @@ export function Navbar() {
                     />
                     <div>
                         <div className="text-sm font-semibold leading-tight" style={{ color: '#f0effc' }}>
-                            {fetchCurrentUser.name}
+                            {user?.name}
                         </div>
                         <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                            {fetchCurrentUser.username}
+                            {user?.username}
                         </div>
                     </div>
                 </div>
-                <PlanBadge plan={fetchCurrentUser.plan} />
+                <PlanBadge plan={user?.plan} />
             </header>
         </>
     )
