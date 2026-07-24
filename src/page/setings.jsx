@@ -1,21 +1,42 @@
-import { useState } from "react"
-import { BackIcon, ChevronRight, StarIcon, SupportIcon } from "../assets/icon"
-import { USERS } from "../config/bd"
-import { PlanBadge } from "../components/PlanBadge"
-import { useNavigate } from "react-router-dom";
+import { Fragment, useState } from 'react';
+import { BackIcon, ChevronRight, StarIcon, SupportIcon } from '../assets/icon';
+import { PlanBadge } from '../components/PlanBadge';
+import { IconButton } from '../components/IconButton';
+import { useNavigate } from 'react-router-dom';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
-// ── HOZIRCHA 1-USER BILAN KIRISH (Keyinchalik tg_id orqali dinamik olinadi) ─────────────────
-const CURRENT_USER = USERS[0]; // Alex Ivanov (tg_id: '123456789')
+const sectionStyle = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.07)',
+};
 
-// ── settings row ─────────────────────────────────────────────────────────────
-export function SettingsRow({
-  icon,
-  label,
-  sub,
-  accent,
-  onClick,
-}) {
-  const [hover, setHover] = useState(false)
+const backButtonStyle = {
+  width: 36,
+  height: 36,
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: 'rgba(255,255,255,0.7)',
+  cursor: 'pointer',
+  flexShrink: 0,
+};
+
+const settingsRows = [
+  {
+    icon: <StarIcon />,
+    label: "Obuna bo'lish",
+    sub: "Obuna bo'lish orqali cheklovlarni olib tashlang",
+    accent: true,
+  },
+  {
+    icon: <SupportIcon />,
+    label: "Xizmat ko'rsatish",
+    sub: "Xatoliklar, takliflar yoki yordam uchun murojaat qiling",
+  },
+];
+
+export function SettingsRow({ icon, label, sub, accent, onClick }) {
+  const [hover, setHover] = useState(false);
+
   return (
     <button
       onClick={onClick}
@@ -40,10 +61,7 @@ export function SettingsRow({
         {icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div
-          className="text-sm font-medium"
-          style={{ color: accent ? '#fcd34d' : '#f0effc' }}
-        >
+        <div className="text-sm font-medium" style={{ color: accent ? '#fcd34d' : '#f0effc' }}>
           {label}
         </div>
         {sub && (
@@ -54,56 +72,29 @@ export function SettingsRow({
       </div>
       <ChevronRight />
     </button>
-  )
+  );
 }
 
-// ── settings page ─────────────────────────────────────────────────────────────
 export function SettingsPage() {
   const navigate = useNavigate();
+  const user = useCurrentUser();
 
   return (
-    <div
-      className="slide-in-right flex flex-col"
-      style={{ minHeight: '100dvh' }}
-    >
-      {/* header */}
-      <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center justify-center rounded-xl transition-colors"
-          style={{
-            width: 36,
-            height: 36,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: 'rgba(255,255,255,0.7)',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-          aria-label="Go back"
-        >
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh' }}>
+      <header className="flex items-center gap-3 px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <IconButton onClick={() => navigate('/')} className="rounded-xl" style={backButtonStyle} aria-label="Go back">
           <BackIcon />
-        </button>
+        </IconButton>
         <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
           Sozlamalar
         </span>
       </header>
 
-      {/* profile card */}
-      <div
-        className="mx-4 mt-5 mb-2 rounded-2xl flex flex-col items-center py-6 px-4"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.07)',
-        }}
-      >
+      <div className="mx-4 mt-5 mb-2 rounded-2xl flex flex-col items-center py-6 px-4" style={sectionStyle}>
         <div className="relative">
           <img
-            src={CURRENT_USER.avatar}
-            alt={CURRENT_USER.name}
+            src={user?.avatar}
+            alt={user?.name}
             className="rounded-full object-cover"
             style={{
               width: 76,
@@ -112,7 +103,7 @@ export function SettingsPage() {
               boxShadow: '0 0 20px rgba(124,90,240,0.35)',
             }}
           />
-          {CURRENT_USER.plan === 'VIP' && (
+          {user?.plan === 'VIP' && (
             <div
               className="absolute -bottom-1 -right-1 flex items-center justify-center rounded-full"
               style={{
@@ -128,45 +119,26 @@ export function SettingsPage() {
         </div>
 
         <div className="mt-3 text-base font-semibold" style={{ color: '#f0effc' }}>
-          {CURRENT_USER.name}
+          {user?.name}
         </div>
         <div className="text-xs mt-0.5 mb-3" style={{ color: 'rgba(255,255,255,0.38)' }}>
-          {CURRENT_USER.username}
+          {user?.username}
         </div>
-        <PlanBadge plan={CURRENT_USER.plan} />
+        <PlanBadge plan={user?.plan} />
       </div>
 
-      {/* actions */}
-      <div
-        className="mx-4 mt-4 rounded-2xl overflow-hidden"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.07)',
-        }}
-      >
-        <SettingsRow
-          icon={<StarIcon />}
-          label="Obuna bo'lish"
-          sub="Obuna bo'lish orqali cheklovlarni olib tashlang"
-          accent
-          onClick={() => { }}
-        />
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />
-        <SettingsRow
-          icon={<SupportIcon />}
-          label="Xizmat ko'rsatish"
-          sub="Xatoliklar, takliflar yoki yordam uchun murojaat qiling"
-          onClick={() => { }}
-        />
+      <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+        {settingsRows.map((row, index) => (
+          <Fragment key={row.label}>
+            {index > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />}
+            <SettingsRow icon={row.icon} label={row.label} sub={row.sub} accent={row.accent} onClick={() => {}} />
+          </Fragment>
+        ))}
       </div>
 
-      {/* version */}
-      <div
-        className="mt-auto pb-8 text-center text-xs"
-        style={{ color: 'rgba(255,255,255,0.2)' }}
-      >
+      <div className="mt-auto pb-8 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
         v1.0.0 · Telegram Web App
       </div>
     </div>
-  )
+  );
 }

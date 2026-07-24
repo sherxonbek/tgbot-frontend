@@ -1,24 +1,12 @@
 const API_URL = 'https://tgbot-backend-r3ei.onrender.com/api/users';
 
-// Telegramdan kelgan ID (test uchun URL'dan tg_id berish mumkin)
 export const getTelegramId = () => {
-  // Telegram WebApp bor-yo'qligini va ichidagi ma'lumotlarni tekshiramiz
-  const webApp = window.Telegram?.WebApp;
-  console.log("Telegram WebApp obyekti:", webApp);
-  console.log("initDataUnsafe:", webApp?.initDataUnsafe);
-
-  const unsafeUserId = webApp?.initDataUnsafe?.user?.id;
+  const unsafeUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
   if (unsafeUserId) {
     return unsafeUserId.toString();
   }
 
-  // URL dan debug uchun o'qish
-  const debugId = new URLSearchParams(window.location.search).get('tg_id');
-  if (debugId) {
-    return debugId;
-  }
-
-  return null;
+  return new URLSearchParams(window.location.search).get('tg_id');
 };
 
 const resolveTelegramId = async (attempts = 15, intervalMs = 120) => {
@@ -29,26 +17,25 @@ const resolveTelegramId = async (attempts = 15, intervalMs = 120) => {
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+
   return null;
 };
 
 export async function fetchUser() {
-  const tg_id = await resolveTelegramId();
+  const tgId = await resolveTelegramId();
 
-  if (!tg_id) {
-    console.error("Telegram ID topilmadi. Ilovani Telegram WebApp ichida oching.");
+  if (!tgId) {
+    console.error('Telegram ID topilmadi. Ilovani Telegram WebApp ichida oching.');
     return null;
   }
 
   try {
-    const response = await fetch(`${API_URL}/${tg_id}`);
+    const response = await fetch(`${API_URL}/${tgId}`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const data = await response.json();
-    console.log(data);
-    
-    return data;
+
+    return response.json();
   } catch (error) {
     console.error("Foydalanuvchini olishda xatolik:", error);
     return null;
