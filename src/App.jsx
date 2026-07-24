@@ -16,7 +16,7 @@ export default function App() {
   const user = useCurrentUser(); // Userni tekshiramiz
 
   // Hali user kelmagan bo'lsa (null bo'lsa), butun ekran bo'ylab Loading ko'rsatamiz
-  if (user === null) {
+  if (user === null || user.avatar === undefined || user.name === undefined || user.username === undefined || user.plan === undefined || user.status === undefined) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-3"></div>
