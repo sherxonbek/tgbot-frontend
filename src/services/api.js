@@ -5,7 +5,7 @@ export const getTelegramId = () => {
   if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user?.id) {
     return window.Telegram.WebApp.initDataUnsafe.user.id.toString();
   }
-  return '123456789'; // Test uchun standart ID
+  return '6473619912'; // Test uchun standart ID
 };
 
 export async function fetchUser() {
