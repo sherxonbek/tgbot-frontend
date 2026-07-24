@@ -1,8 +1,12 @@
-import { USERS } from "../config/bd"; // USERS massivini import qilamiz
+// import { USERS } from "../config/bd"; // USERS massivini import qilamiz
+import { fetchUser } from "../services/api";
 import { PlanBadge } from "./PlanBadge";
 
-// ── HOZIRCHA 1-USER BILAN KIRISH (Keyinchalik tg_id orqali dinamik olinadi) ─────────────────
-const CURRENT_USER = USERS[0]; // Alex Ivanov (tg_id: '123456789')
+//fetch qilingan user ma'lumotlarini olish
+const fetchCurrentUser = async () => {
+  const user = await fetchUser();
+  return user;
+};
 
 export function Navbar() {
     return (
@@ -14,8 +18,8 @@ export function Navbar() {
             >
                 <div className="flex items-center gap-3">
                     <img
-                        src={CURRENT_USER.avatar}
-                        alt={CURRENT_USER.name}
+                        src={fetchCurrentUser.avatar}
+                        alt={fetchCurrentUser.name}
                         className="rounded-full object-cover flex-shrink-0"
                         style={{
                             width: 38,
@@ -26,14 +30,14 @@ export function Navbar() {
                     />
                     <div>
                         <div className="text-sm font-semibold leading-tight" style={{ color: '#f0effc' }}>
-                            {CURRENT_USER.name}
+                            {fetchCurrentUser.name}
                         </div>
                         <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                            {CURRENT_USER.username}
+                            {fetchCurrentUser.username}
                         </div>
                     </div>
                 </div>
-                <PlanBadge plan={CURRENT_USER.plan} />
+                <PlanBadge plan={fetchCurrentUser.plan} />
             </header>
         </>
     )
