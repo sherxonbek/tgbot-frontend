@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScannerHeart } from './ScannerHeart';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { updateUserStatus } from '../services/api';
+import { socket } from '../services/socket';
 
 const searchButtonStyle = {
     background: 'rgba(124,90,240,0.12)',
@@ -13,20 +14,36 @@ const searchButtonStyle = {
 export function Main() {
     const currentUser = useCurrentUser();
     const navigate = useNavigate();
-    const user = useCurrentUser();
+    const [isSearching, setIsSearching] = useState(false);
 
-    const handleSearch = async () => {
-        if (!currentUser) return;
-
-        try {
-            // 1. Tugma bosilganda bazadagi statusni true ga o'zgartiramiz
-            await updateUserStatus(currentUser.telegram_id || currentUser.tg_id, true);
-
-            // 2. Keyin chat/qidiruv sahifasiga o'tamiz
-            navigate('/chat');
-        } catch (error) {
-            console.error("Qidiruvni boshlashda xatolik:", error);
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();
         }
+
+        // Juft topilganda chat sahifasiga o'tkazish va partner ma'lumotini saqlash
+        socket.on('matched', (data) => {
+            setIsSearching(false);
+            // Partner ma'lumotini sessionStorage ga saqlab chatga o'tamiz
+            sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+            navigate('/chat');
+        });
+
+        socket.on('waiting', () => {
+            setIsSearching(true);
+        });
+
+        return () => {
+            socket.off('matched');
+            socket.off('waiting');
+        };
+    }, [navigate]);
+
+    const handleSearch = () => {
+        if (!currentUser) return;
+        setIsSearching(true);
+        // Serverga find_match yuboramiz
+        socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
     };
 
     return (
@@ -35,14 +52,18 @@ export function Main() {
 
             <div className="text-center" style={{ maxWidth: 240 }}>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
-                    Salom, {user?.name || 'Foydalanuvchi'}! Faol foydalanuvchi qidirish
+                    {isSearching ? 'Faol foydalanuvchi qidirilmoqda...' : `Salom, ${currentUser?.name || 'Foydalanuvchi'}! Qidirishni boshlang`}
                 </p>
             </div>
 
             <button
                 className="flex items-center gap-2 px-8 py-3 rounded-full text-xs font-medium transition-all"
                 onClick={handleSearch}
-                style={searchButtonStyle}
+                disabled={isSearching}
+                style={{
+                    ...searchButtonStyle,
+                    opacity: isSearching ? 0.7 : 1,
+                }}
             >
                 <span
                     className="rounded-full"
@@ -55,7 +76,7 @@ export function Main() {
                         animation: 'heartbeat 2s ease-in-out infinite',
                     }}
                 />
-                Qidirish
+                {isSearching ? 'Qidirilmoqda...' : 'Qidirish'}
             </button>
         </main>
     );

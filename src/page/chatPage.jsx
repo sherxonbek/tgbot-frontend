@@ -3,42 +3,61 @@ import { FlagIcon, SendIcon, SkipIcon } from '../assets/icon';
 import { Navbar } from '../components/navbar';
 import MessageBubble from '../components/MessageBubble';
 import { useNavigate } from 'react-router-dom';
-import { useActiveUsers, useCurrentUser } from '../hooks/useCurrentUser';
-import { ScannerHeart } from '../components/ScannerHeart'; // Scanner animatsiyasini chaqirib olamiz
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { ScannerHeart } from '../components/ScannerHeart';
+import { socket } from '../services/socket';
 
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
 const REPLY_OPTIONS = ['Hey! 👋', "That's interesting!", 'Tell me more 😊', 'Nice to meet you!', 'Really? How so?'];
 
 export function ChatPage({ onNext }) {
   const currentUser = useCurrentUser();
-  const activeUsers = useActiveUsers();
+  const [matchUser, setMatchUser] = useState(() => {
+    const saved = sessionStorage.getItem('matchUser');
+    return saved ? JSON.parse(saved) : null;
+  });
   
-  const [matchUser, setMatchUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   
   const bottomRef = useRef(null);
   const navigate = useNavigate();
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Aktiv foydalanuvchilar kelganda tasodifiy bittasini tanlash
   useEffect(() => {
-    if (activeUsers.length > 0 && !matchUser) {
-      const randomIndex = Math.floor(Math.random() * activeUsers.length);
-      setMatchUser(activeUsers[randomIndex]);
+    if (!socket.connected) {
+      socket.connect();
     }
-  }, [activeUsers, matchUser]);
 
-  // "Next" bosilganda boshqa userni qidirish uchun matchUser'ni tozalaymiz
+    socket.on('matched', (data) => {
+      setMatchUser(data.partner);
+      sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+      setIsSearching(false);
+      setMessages([]);
+    });
+
+    socket.on('waiting', () => {
+      setIsSearching(true);
+    });
+
+    return () => {
+      socket.off('matched');
+      socket.off('waiting');
+    };
+  }, []);
+
+  // "Next" bosilganda yangi user qidirish
   const handleNextUser = () => {
+    setMatchUser(null);
+    sessionStorage.removeItem('matchUser');
     setMessages([]);
-    setMatchUser(null); // Avvalgidan uzib, qaytadan qidirish holatiga o'tkazish
-    if (activeUsers.length > 0) {
-      const randomIndex = Math.floor(Math.random() * activeUsers.length);
-      setMatchUser(activeUsers[randomIndex]);
+    if (currentUser) {
+      setIsSearching(true);
+      socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
     }
   };
 
@@ -87,8 +106,8 @@ export function ChatPage({ onNext }) {
     navigate('/');
   };
 
-  // 🔴 AGAR HALI AKTIV USER TOPILMAGAN BO'LSA - QIDIRUV (LOADING) EKRANINI KO'RSATAMIZ
-  if (!matchUser) {
+  // Agar hali match topilmagan yoki qidirilayotgan bo'lsa
+  if (!matchUser || isSearching) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
         <ScannerHeart />
@@ -111,7 +130,6 @@ export function ChatPage({ onNext }) {
     );
   }
 
-  // 🟢 USER TOPILGANDAN KEYIN ASOSIY CHAT OYNASI OCHILADI
   return (
     <div className="slide-in-right flex flex-col" style={{ height: '100dvh' }}>
       <Navbar />
