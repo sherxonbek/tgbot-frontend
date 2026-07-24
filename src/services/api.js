@@ -1,57 +1,52 @@
 const API_URL = 'https://tgbot-backend-r3ei.onrender.com/api/users';
 
-const extractIdFromInitData = (initData) => {
-  if (!initData) {
-    return null;
-  }
+// const extractIdFromInitData = (initData) => {
+//   if (!initData) {
+//     return null;
+//   }
 
-  const params = new URLSearchParams(initData);
-  const userJson = params.get('user');
-  if (!userJson) {
-    return null;
-  }
+//   const params = new URLSearchParams(initData);
+//   const userJson = params.get('user');
+//   if (!userJson) {
+//     return null;
+//   }
 
-  try {
-    const user = JSON.parse(userJson);
-    return user?.id ? user.id.toString() : null;
-  } catch (error) {
-    console.error('Telegram initData dagi user JSON noto‘g‘ri:', error);
-    return null;
-  }
-};
+//   try {
+//     const user = JSON.parse(userJson);
+//     return user?.id ? user.id.toString() : null;
+//   } catch (error) {
+//     console.error('Telegram initData dagi user JSON noto‘g‘ri:', error);
+//     return null;
+//   }
+// };
 
-const extractIdFromHash = () => {
-  const hash = window.location.hash.startsWith('#')
-    ? window.location.hash.slice(1)
-    : window.location.hash;
-  const hashParams = new URLSearchParams(hash);
-  const tgWebAppData = hashParams.get('tgWebAppData');
-  if (!tgWebAppData) {
-    return null;
-  }
+// const extractIdFromHash = () => {
+//   const hash = window.location.hash.startsWith('#')
+//     ? window.location.hash.slice(1)
+//     : window.location.hash;
+//   const hashParams = new URLSearchParams(hash);
+//   const tgWebAppData = hashParams.get('tgWebAppData');
+//   if (!tgWebAppData) {
+//     return null;
+//   }
 
-  const decodedInitData = decodeURIComponent(tgWebAppData);
-  return extractIdFromInitData(decodedInitData);
-};
+//   const decodedInitData = decodeURIComponent(tgWebAppData);
+//   return extractIdFromInitData(decodedInitData);
+// };
 
 // Telegramdan kelgan ID (test uchun URL'dan tg_id berish mumkin)
 export const getTelegramId = () => {
+  // Telegram WebApp bor-yo'qligini va ichidagi ma'lumotlarni tekshiramiz
   const webApp = window.Telegram?.WebApp;
+  console.log("Telegram WebApp obyekti:", webApp);
+  console.log("initDataUnsafe:", webApp?.initDataUnsafe);
+
   const unsafeUserId = webApp?.initDataUnsafe?.user?.id;
   if (unsafeUserId) {
     return unsafeUserId.toString();
   }
 
-  const initDataUserId = extractIdFromInitData(webApp?.initData);
-  if (initDataUserId) {
-    return initDataUserId;
-  }
-
-  const hashUserId = extractIdFromHash();
-  if (hashUserId) {
-    return hashUserId;
-  }
-
+  // URL dan debug uchun o'qish
   const debugId = new URLSearchParams(window.location.search).get('tg_id');
   if (debugId) {
     return debugId;
