@@ -4,6 +4,7 @@ import { Navbar } from '../components/navbar';
 import MessageBubble from '../components/MessageBubble';
 import { useNavigate } from 'react-router-dom';
 import { useActiveUsers, useCurrentUser } from '../hooks/useCurrentUser';
+import { ScannerHeart } from '../components/ScannerHeart'; // Scanner animatsiyasini chaqirib olamiz
 
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
 const REPLY_OPTIONS = ['Hey! 👋', "That's interesting!", 'Tell me more 😊', 'Nice to meet you!', 'Really? How so?'];
@@ -23,6 +24,7 @@ export function ChatPage({ onNext }) {
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Aktiv foydalanuvchilar kelganda tasodifiy bittasini tanlash
   useEffect(() => {
     if (activeUsers.length > 0 && !matchUser) {
       const randomIndex = Math.floor(Math.random() * activeUsers.length);
@@ -30,9 +32,10 @@ export function ChatPage({ onNext }) {
     }
   }, [activeUsers, matchUser]);
 
-  // "Next" tugmasi bosilganda boshqa tasodifiy userni tanlash va chatni tozalash
+  // "Next" bosilganda boshqa userni qidirish uchun matchUser'ni tozalaymiz
   const handleNextUser = () => {
     setMessages([]);
+    setMatchUser(null); // Avvalgidan uzib, qaytadan qidirish holatiga o'tkazish
     if (activeUsers.length > 0) {
       const randomIndex = Math.floor(Math.random() * activeUsers.length);
       setMatchUser(activeUsers[randomIndex]);
@@ -84,6 +87,31 @@ export function ChatPage({ onNext }) {
     navigate('/');
   };
 
+  // 🔴 AGAR HALI AKTIV USER TOPILMAGAN BO'LSA - QIDIRUV (LOADING) EKRANINI KO'RSATAMIZ
+  if (!matchUser) {
+    return (
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
+        <ScannerHeart />
+        <div className="text-center mt-6" style={{ maxWidth: 260 }}>
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+            Faol foydalanuvchi qidirilmoqda...
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            Iltimos, ozgina kuting, boshqa ishtirokchi ulanishiga qarab qidiruv davom etmoqda.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="mt-8 px-6 py-2.5 rounded-full text-xs font-medium transition-all"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}
+        >
+          Asosiy sahifaga qaytish
+        </button>
+      </div>
+    );
+  }
+
+  // 🟢 USER TOPILGANDAN KEYIN ASOSIY CHAT OYNASI OCHILADI
   return (
     <div className="slide-in-right flex flex-col" style={{ height: '100dvh' }}>
       <Navbar />
