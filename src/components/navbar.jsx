@@ -5,6 +5,7 @@ import { PlanBadge } from "./PlanBadge";
 //fetch qilingan user ma'lumotlarini olish
 const fetchCurrentUser = async () => {
   const user = await fetchUser();
+  console.log("Current User:", user);
   return user;
 };
 

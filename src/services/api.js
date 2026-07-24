@@ -13,6 +13,8 @@ export async function fetchUser() {
   try {
     const response = await fetch(`${API_URL}/${tg_id}`);
     const data = await response.json();
+    console.log(data);
+    
     return data;
   } catch (error) {
     console.error("Foydalanuvchini olishda xatolik:", error);
