@@ -41,3 +41,15 @@ export async function fetchUser() {
     return null;
   }
 }
+export async function updateUserStatus(tgId, status) {
+  try {
+    const response = await fetch(`${API_URL}/${tgId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Statusni yangilashda xatolik:', error);
+  }
+}
