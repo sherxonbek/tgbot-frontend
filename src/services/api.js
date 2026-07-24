@@ -1,4 +1,4 @@
-const API_URL = 'https://silliness-tranquil-laxative.ngrok-free.dev/api/users';
+const API_URL = 'https://tgbot-backend-r3ei.onrender.com/api/users';
 
 // Telegramdan kelgan ID yoki standart test ID
 export const getTelegramId = () => {
