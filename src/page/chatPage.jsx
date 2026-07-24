@@ -28,27 +28,30 @@ export function ChatPage({ onNext }) {
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Blacklistga qo'shish funksiyasi (3 minut davomida qayta tushmasligi uchun)
-  const addToBlacklist = (partnerTgId) => {
-    if (!partnerTgId) return;
-    const existingBlacklist = JSON.parse(localStorage.getItem('match_blacklist') || '{}');
-    const expireTime = Date.now() + 3 * 60 * 1000; 
-    existingBlacklist[partnerTgId] = expireTime;
-    localStorage.setItem('match_blacklist', JSON.stringify(existingBlacklist));
-  };
+  // 3 daqiqalik vaqtga saqlash va faqat eskilarini tozalash funksiyasi
+  const savePartnerToLocalStorage = (partnerId) => {
+    if (!partnerId) return;
 
-  // Blacklistdagi faol ID larni olish (muddati o'tganlarini tozalab)
-  const getBlacklist = () => {
-    const existingBlacklist = JSON.parse(localStorage.getItem('match_blacklist') || '{}');
+    const STORAGE_KEY = 'recent_matched_partners';
     const nowTime = Date.now();
-    const activeBlacklist = [];
+    const THREE_MINUTES = 3 * 60 * 1000; // 3 daqiqa (milli sekundda)
 
-    for (const [tgId, expireTime] of Object.entries(existingBlacklist)) {
+    // Oldingi saqlanganlarni o'qiymiz (format: { tg_id: expireTime })
+    const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+    // 1. Avval muddati o'tgan (3 daqiqadan oshgan) ID larni tozalab tashlaymiz (butun bazani emas, faqat eskilarini)
+    const activeHistory = {};
+    for (const [id, expireTime] of Object.entries(history)) {
       if (expireTime > nowTime) {
-        activeBlacklist.push(Number(tgId));
+        activeHistory[id] = expireTime; // Hali vaqti tugamaganlari qoladi
       }
     }
-    return activeBlacklist;
+
+    // 2. Yangi ulangan partnerni qo'shamiz (joriy vaqt + 3 daqiqa)
+    activeHistory[partnerId] = nowTime + THREE_MINUTES;
+
+    // 3. Orqaga localStorage ga saqlaymiz
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(activeHistory));
   };
 
   useEffect(() => {
@@ -59,6 +62,11 @@ export function ChatPage({ onNext }) {
     socket.on('matched', (data) => {
       setMatchUser(data.partner);
       sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+
+      // Suhbatdosh bog'langanda uning ID sini 3 daqiqaga localStorage ga saqlaymiz
+      const partnerId = data.partner?.telegram_id || data.partner?.tg_id;
+      savePartnerToLocalStorage(partnerId);
+
       setIsSearching(false);
       setMessages([]);
     });
@@ -69,11 +77,6 @@ export function ChatPage({ onNext }) {
 
     // Suhbatdosh chiqib ketganda yoki Next bosganda
     socket.on('partner_left', () => {
-      if (matchUser) {
-        const partnerId = matchUser.telegram_id || matchUser.tg_id;
-        addToBlacklist(partnerId);
-      }
-
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
       setMessages([]);
@@ -82,8 +85,7 @@ export function ChatPage({ onNext }) {
       if (currentUser) {
         setIsSearching(true);
         const myId = currentUser.telegram_id || currentUser.tg_id;
-        const blacklist = getBlacklist();
-        socket.emit('find_match', { tg_id: myId, blacklist });
+        socket.emit('find_match', { tg_id: myId });
       }
     });
 
@@ -92,15 +94,10 @@ export function ChatPage({ onNext }) {
       socket.off('waiting');
       socket.off('partner_left');
     };
-  }, [currentUser, matchUser]);
+  }, [currentUser]);
 
   // "Next" bosilganda
   const handleNextUser = () => {
-    if (matchUser) {
-      const partnerId = matchUser.telegram_id || matchUser.tg_id;
-      addToBlacklist(partnerId); // Blacklistga yozib qo'yamiz
-    }
-
     socket.emit('leave_chat');
 
     setMatchUser(null);
@@ -110,8 +107,7 @@ export function ChatPage({ onNext }) {
     if (currentUser) {
       setIsSearching(true);
       const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist();
-      socket.emit('find_match', { tg_id: myId, blacklist });
+      socket.emit('find_match', { tg_id: myId });
     }
   };
 
@@ -153,11 +149,6 @@ export function ChatPage({ onNext }) {
 
   const handleReport = () => {
     setReportOpen(false);
-    if (matchUser) {
-      const partnerId = matchUser.telegram_id || matchUser.tg_id;
-      addToBlacklist(partnerId);
-    }
-
     socket.emit('leave_chat');
 
     setMatchUser(null);
@@ -167,8 +158,7 @@ export function ChatPage({ onNext }) {
     if (currentUser) {
       setIsSearching(true);
       const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist();
-      socket.emit('find_match', { tg_id: myId, blacklist });
+      socket.emit('find_match', { tg_id: myId });
     }
   };
 
