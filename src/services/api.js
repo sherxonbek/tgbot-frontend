@@ -20,6 +20,20 @@ const extractIdFromInitData = (initData) => {
   }
 };
 
+const extractIdFromHash = () => {
+  const hash = window.location.hash.startsWith('#')
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const hashParams = new URLSearchParams(hash);
+  const tgWebAppData = hashParams.get('tgWebAppData');
+  if (!tgWebAppData) {
+    return null;
+  }
+
+  const decodedInitData = decodeURIComponent(tgWebAppData);
+  return extractIdFromInitData(decodedInitData);
+};
+
 // Telegramdan kelgan ID (test uchun URL'dan tg_id berish mumkin)
 export const getTelegramId = () => {
   const webApp = window.Telegram?.WebApp;
@@ -33,6 +47,11 @@ export const getTelegramId = () => {
     return initDataUserId;
   }
 
+  const hashUserId = extractIdFromHash();
+  if (hashUserId) {
+    return hashUserId;
+  }
+
   const debugId = new URLSearchParams(window.location.search).get('tg_id');
   if (debugId) {
     return debugId;
@@ -41,8 +60,19 @@ export const getTelegramId = () => {
   return null;
 };
 
+const resolveTelegramId = async (attempts = 15, intervalMs = 120) => {
+  for (let i = 0; i < attempts; i += 1) {
+    const tgId = getTelegramId();
+    if (tgId) {
+      return tgId;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return null;
+};
+
 export async function fetchUser() {
-  const tg_id = getTelegramId();
+  const tg_id = await resolveTelegramId();
 
   if (!tg_id) {
     console.error("Telegram ID topilmadi. Ilovani Telegram WebApp ichida oching.");
