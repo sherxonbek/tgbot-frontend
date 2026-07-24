@@ -1,31 +1,59 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlagIcon, SendIcon, SkipIcon } from '../assets/icon';
-import { USERS } from '../config/bd';
 import { Navbar } from '../components/navbar';
 import MessageBubble from '../components/MessageBubble';
 import { useNavigate } from 'react-router-dom';
+import { useActiveUsers, useCurrentUser } from '../hooks/useCurrentUser';
 
-const CURRENT_USER = USERS[0];
-const MATCH_USER = USERS[1];
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
 const REPLY_OPTIONS = ['Hey! 👋', "That's interesting!", 'Tell me more 😊', 'Nice to meet you!', 'Really? How so?'];
 
 export function ChatPage({ onNext }) {
+  const currentUser = useCurrentUser();
+  const activeUsers = useActiveUsers();
+  
+  const [matchUser, setMatchUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  
   const bottomRef = useRef(null);
   const navigate = useNavigate();
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  useEffect(() => {
+    if (activeUsers.length > 0 && !matchUser) {
+      const randomIndex = Math.floor(Math.random() * activeUsers.length);
+      setMatchUser(activeUsers[randomIndex]);
+    }
+  }, [activeUsers, matchUser]);
+
+  // "Next" tugmasi bosilganda boshqa tasodifiy userni tanlash va chatni tozalash
+  const handleNextUser = () => {
+    setMessages([]);
+    if (activeUsers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * activeUsers.length);
+      setMatchUser(activeUsers[randomIndex]);
+    }
+  };
+
   const sendMessage = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !currentUser) return;
 
     setSending(true);
-    setMessages((prev) => [...prev, { id: Date.now(), text, from: 'me', senderTgId: CURRENT_USER.tg_id, time: now() }]);
+    setMessages((prev) => [
+      ...prev, 
+      { 
+        id: Date.now(), 
+        text, 
+        from: 'me', 
+        senderTgId: currentUser.telegram_id || currentUser.tg_id, 
+        time: now() 
+      }
+    ]);
     setInput('');
 
     window.setTimeout(() => setSending(false), 300);
@@ -36,7 +64,7 @@ export function ChatPage({ onNext }) {
           id: Date.now() + 1,
           text: REPLY_OPTIONS[Math.floor(Math.random() * REPLY_OPTIONS.length)],
           from: 'them',
-          senderTgId: MATCH_USER.tg_id,
+          senderTgId: matchUser?.telegram_id || matchUser?.tg_id,
           time: now(),
         },
       ]);
@@ -62,7 +90,7 @@ export function ChatPage({ onNext }) {
 
       <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
         <button
-          onClick={() => navigate('/')}
+          onClick={handleNextUser}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
           style={{ background: 'rgba(124,90,240,0.18)', border: '1px solid rgba(124,90,240,0.35)', color: '#a78bfa', cursor: 'pointer' }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.3)'; }}
@@ -111,7 +139,7 @@ export function ChatPage({ onNext }) {
               </svg>
             </div>
             <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Suhbatni boshlang. ({MATCH_USER.name} bilan)
+              Suhbatni boshlang. ({matchUser?.name || matchUser?.username || 'Suhbatdosh'} bilan)
             </p>
           </div>
         ) : (
