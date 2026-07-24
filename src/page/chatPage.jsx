@@ -9,8 +9,32 @@ import { socket } from '../services/socket';
 
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
 const REPLY_OPTIONS = ['Hey! 👋', "That's interesting!", 'Tell me more 😊', 'Nice to meet you!', 'Really? How so?'];
+const RECENT_MATCHES_STORAGE_KEY = 'recent_matched_partners';
+const THREE_MINUTES_MS = 3 * 60 * 1000;
 
-export function ChatPage({ onNext }) {
+const readActivePartnerHistory = () => {
+  const nowTime = Date.now();
+
+  try {
+    const history = JSON.parse(localStorage.getItem(RECENT_MATCHES_STORAGE_KEY) || '{}');
+    const activeHistory = {};
+
+    for (const [id, expireTime] of Object.entries(history)) {
+      if (expireTime > nowTime) {
+        activeHistory[id] = expireTime;
+      }
+    }
+
+    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
+    return activeHistory;
+  } catch (error) {
+    console.error('recent_matched_partners parse xatoligi:', error);
+    localStorage.removeItem(RECENT_MATCHES_STORAGE_KEY);
+    return {};
+  }
+};
+
+export function ChatPage() {
   const currentUser = useCurrentUser();
   const [matchUser, setMatchUser] = useState(() => {
     const saved = sessionStorage.getItem('matchUser');
@@ -28,46 +52,15 @@ export function ChatPage({ onNext }) {
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // 1. 3 daqiqalik vaqtga saqlash va faqat eskilarini tozalash funksiyasi
   const savePartnerToLocalStorage = (partnerId) => {
     if (!partnerId) return;
 
-    const STORAGE_KEY = 'recent_matched_partners';
-    const nowTime = Date.now();
-    const THREE_MINUTES = 3 * 60 * 1000;
-
-    const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-
-    const activeHistory = {};
-    for (const [id, expireTime] of Object.entries(history)) {
-      if (expireTime > nowTime) {
-        activeHistory[id] = expireTime;
-      }
-    }
-
-    activeHistory[partnerId] = nowTime + THREE_MINUTES;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(activeHistory));
+    const activeHistory = readActivePartnerHistory();
+    activeHistory[String(partnerId)] = Date.now() + THREE_MINUTES_MS;
+    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
   };
 
-  // 2. localStorage dan vaqti tugamagan ID larni o'qib massiv qaytaruvchi funksiya (GET)
-  const getBlacklist = () => {
-    const STORAGE_KEY = 'recent_matched_partners';
-    const nowTime = Date.now();
-    
-    try {
-      const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      const activeIds = [];
-
-      for (const [id, expireTime] of Object.entries(history)) {
-        if (expireTime > nowTime) {
-          activeIds.push(id);
-        }
-      }
-      return activeIds;
-    } catch (e) {
-      return [];
-    }
-  };
+  const getBlacklist = () => Object.keys(readActivePartnerHistory());
 
   useEffect(() => {
     if (!socket.connected) {

@@ -4,12 +4,46 @@ import { ScannerHeart } from './ScannerHeart';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { socket } from '../services/socket';
 
+const RECENT_MATCHES_STORAGE_KEY = 'recent_matched_partners';
+const THREE_MINUTES_MS = 3 * 60 * 1000;
+
 const searchButtonStyle = {
     background: 'rgba(124,90,240,0.12)',
     border: '1px solid rgba(124,90,240,0.25)',
     color: '#a78bfa',
     cursor: 'pointer',
 };
+
+const readActivePartnerHistory = () => {
+    const nowTime = Date.now();
+
+    try {
+        const history = JSON.parse(localStorage.getItem(RECENT_MATCHES_STORAGE_KEY) || '{}');
+        const activeHistory = {};
+
+        for (const [id, expireTime] of Object.entries(history)) {
+            if (expireTime > nowTime) {
+                activeHistory[id] = expireTime;
+            }
+        }
+
+        localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
+        return activeHistory;
+    } catch (error) {
+        console.error('recent_matched_partners parse xatoligi:', error);
+        localStorage.removeItem(RECENT_MATCHES_STORAGE_KEY);
+        return {};
+    }
+};
+
+const savePartnerToLocalStorage = (partnerId) => {
+    if (!partnerId) return;
+    const activeHistory = readActivePartnerHistory();
+    activeHistory[String(partnerId)] = Date.now() + THREE_MINUTES_MS;
+    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
+};
+
+const getBlacklist = () => Object.keys(readActivePartnerHistory());
 
 export function Main() {
     const currentUser = useCurrentUser();
@@ -24,6 +58,8 @@ export function Main() {
         // Juft topilganda chat sahifasiga o'tkazish va partner ma'lumotini saqlash
         socket.on('matched', (data) => {
             setIsSearching(false);
+            const partnerId = data.partner?.telegram_id || data.partner?.tg_id;
+            savePartnerToLocalStorage(partnerId);
             // Partner ma'lumotini sessionStorage ga saqlab chatga o'tamiz
             sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
             navigate('/chat');
@@ -47,7 +83,8 @@ export function Main() {
         const userTgId = currentUser.telegram_id || currentUser.tg_id;
         console.log("Qidiruvga berilayotgan ID:", userTgId); // Konsolda tekshirib ko'ring
 
-        socket.emit('find_match', { tg_id: userTgId });
+        const blacklist = getBlacklist();
+        socket.emit('find_match', { tg_id: userTgId, blacklist });
     };
 
     return (
