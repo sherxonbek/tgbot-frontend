@@ -8,7 +8,6 @@ import { ScannerHeart } from '../components/ScannerHeart';
 import { socket } from '../services/socket';
 
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
-const REPLY_OPTIONS = ['Hey! 👋', "That's interesting!", 'Tell me more 😊', 'Nice to meet you!', 'Really? How so?'];
 const RECENT_MATCHES_STORAGE_KEY = 'recent_matched_partners';
 const THREE_MINUTES_MS = 3 * 60 * 1000;
 
@@ -87,8 +86,6 @@ export function ChatPage() {
       sessionStorage.removeItem('matchUser');
       setMessages([]);
       
-      // Alert olib tashlandi, shunda kod to'xtab qolmaydi va darhol yangi qidiruvga tushadi
-      
       if (currentUser) {
         setIsSearching(true);
         const myId = currentUser.telegram_id || currentUser.tg_id;
@@ -97,14 +94,28 @@ export function ChatPage() {
       }
     });
 
+    // Real vaqtda narigi tarafdan kelgan xabarni qabul qilish
+    socket.on('receive_message', (messageData) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: messageData.id,
+          text: messageData.text,
+          from: 'them',
+          senderTgId: messageData.senderTgId,
+          time: messageData.time,
+        },
+      ]);
+    });
+
     return () => {
       socket.off('matched');
       socket.off('waiting');
       socket.off('partner_left');
+      socket.off('receive_message');
     };
   }, [currentUser]);
 
-  // "Next" bosilganda
   const handleNextUser = () => {
     socket.emit('leave_chat');
 
@@ -124,32 +135,23 @@ export function ChatPage() {
     const text = input.trim();
     if (!text || !currentUser) return;
 
+    const myId = currentUser.telegram_id || currentUser.tg_id;
+    const newMessage = {
+      id: Date.now(),
+      text,
+      from: 'me',
+      senderTgId: myId,
+      time: now(),
+    };
+
     setSending(true);
-    setMessages((prev) => [
-      ...prev, 
-      { 
-        id: Date.now(), 
-        text, 
-        from: 'me', 
-        senderTgId: currentUser.telegram_id || currentUser.tg_id, 
-        time: now() 
-      }
-    ]);
+    setMessages((prev) => [...prev, newMessage]);
     setInput('');
 
+    // Xabarni server orqali suhbatdoshga jo'natamiz
+    socket.emit('send_message', newMessage);
+
     window.setTimeout(() => setSending(false), 300);
-    window.setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          text: REPLY_OPTIONS[Math.floor(Math.random() * REPLY_OPTIONS.length)],
-          from: 'them',
-          senderTgId: matchUser?.telegram_id || matchUser?.tg_id,
-          time: now(),
-        },
-      ]);
-    }, 1200);
   };
 
   useEffect(() => {
