@@ -42,8 +42,12 @@ export function Main() {
     const handleSearch = () => {
         if (!currentUser) return;
         setIsSearching(true);
-        // Serverga find_match yuboramiz
-        socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
+
+        // Foydalanuvchining id si aniq borligini tekshirib yuboramiz
+        const userTgId = currentUser.telegram_id || currentUser.tg_id;
+        console.log("Qidiruvga berilayotgan ID:", userTgId); // Konsolda tekshirib ko'ring
+
+        socket.emit('find_match', { tg_id: userTgId });
     };
 
     return (
