@@ -44,14 +44,31 @@ export function ChatPage({ onNext }) {
       setIsSearching(true);
     });
 
+    // Suhbatdosh chiqib ketganda yoki Next bosganda ikkinchi tarafda ishlaydi
+    socket.on('partner_left', () => {
+      setMatchUser(null);
+      sessionStorage.removeItem('matchUser');
+      setMessages([]);
+      alert("Suhbatdosh suhbatni tark etdi.");
+      
+      // Avtomatik ravishda qayta qidiruvga tushirish
+      if (currentUser) {
+        setIsSearching(true);
+        socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
+      }
+    });
+
     return () => {
       socket.off('matched');
       socket.off('waiting');
+      socket.off('partner_left');
     };
-  }, []);
+  }, [currentUser]);
 
-  // "Next" bosilganda yangi user qidirish
+  // "Next" bosilganda yangi user qidirish va partnerga xabar berish
   const handleNextUser = () => {
+    socket.emit('leave_chat');
+
     setMatchUser(null);
     sessionStorage.removeItem('matchUser');
     setMessages([]);
@@ -99,11 +116,17 @@ export function ChatPage({ onNext }) {
 
   const handleReport = () => {
     setReportOpen(false);
-    if (onNext) {
-      onNext();
-      return;
+    // Shikoyat qilinganda ham suhbatdoshga xabar berib chatni yopamiz
+    socket.emit('leave_chat');
+
+    setMatchUser(null);
+    sessionStorage.removeItem('matchUser');
+    setMessages([]);
+
+    if (currentUser) {
+      setIsSearching(true);
+      socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
     }
-    navigate('/');
   };
 
   // Agar hali match topilmagan yoki qidirilayotgan bo'lsa
@@ -179,7 +202,7 @@ export function ChatPage({ onNext }) {
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'none' }} onClick={() => setReportOpen(false)}>
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
+            <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: '56px', background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.6" width="26" height="26">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
