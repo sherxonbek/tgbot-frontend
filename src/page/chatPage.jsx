@@ -28,6 +28,29 @@ export function ChatPage({ onNext }) {
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Blacklistga qo'shish funksiyasi (3 minut davomida qayta tushmasligi uchun)
+  const addToBlacklist = (partnerTgId) => {
+    if (!partnerTgId) return;
+    const existingBlacklist = JSON.parse(localStorage.getItem('match_blacklist') || '{}');
+    const expireTime = Date.now() + 3 * 60 * 1000; 
+    existingBlacklist[partnerTgId] = expireTime;
+    localStorage.setItem('match_blacklist', JSON.stringify(existingBlacklist));
+  };
+
+  // Blacklistdagi faol ID larni olish (muddati o'tganlarini tozalab)
+  const getBlacklist = () => {
+    const existingBlacklist = JSON.parse(localStorage.getItem('match_blacklist') || '{}');
+    const nowTime = Date.now();
+    const activeBlacklist = [];
+
+    for (const [tgId, expireTime] of Object.entries(existingBlacklist)) {
+      if (expireTime > nowTime) {
+        activeBlacklist.push(Number(tgId));
+      }
+    }
+    return activeBlacklist;
+  };
+
   useEffect(() => {
     if (!socket.connected) {
       socket.connect();
@@ -44,17 +67,23 @@ export function ChatPage({ onNext }) {
       setIsSearching(true);
     });
 
-    // Suhbatdosh chiqib ketganda yoki Next bosganda ikkinchi tarafda ishlaydi
+    // Suhbatdosh chiqib ketganda yoki Next bosganda
     socket.on('partner_left', () => {
+      if (matchUser) {
+        const partnerId = matchUser.telegram_id || matchUser.tg_id;
+        addToBlacklist(partnerId);
+      }
+
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
       setMessages([]);
       alert("Suhbatdosh suhbatni tark etdi.");
       
-      // Avtomatik ravishda qayta qidiruvga tushirish
       if (currentUser) {
         setIsSearching(true);
-        socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
+        const myId = currentUser.telegram_id || currentUser.tg_id;
+        const blacklist = getBlacklist();
+        socket.emit('find_match', { tg_id: myId, blacklist });
       }
     });
 
@@ -63,18 +92,26 @@ export function ChatPage({ onNext }) {
       socket.off('waiting');
       socket.off('partner_left');
     };
-  }, [currentUser]);
+  }, [currentUser, matchUser]);
 
-  // "Next" bosilganda yangi user qidirish va partnerga xabar berish
+  // "Next" bosilganda
   const handleNextUser = () => {
+    if (matchUser) {
+      const partnerId = matchUser.telegram_id || matchUser.tg_id;
+      addToBlacklist(partnerId); // Blacklistga yozib qo'yamiz
+    }
+
     socket.emit('leave_chat');
 
     setMatchUser(null);
     sessionStorage.removeItem('matchUser');
     setMessages([]);
+    
     if (currentUser) {
       setIsSearching(true);
-      socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
+      const myId = currentUser.telegram_id || currentUser.tg_id;
+      const blacklist = getBlacklist();
+      socket.emit('find_match', { tg_id: myId, blacklist });
     }
   };
 
@@ -116,7 +153,11 @@ export function ChatPage({ onNext }) {
 
   const handleReport = () => {
     setReportOpen(false);
-    // Shikoyat qilinganda ham suhbatdoshga xabar berib chatni yopamiz
+    if (matchUser) {
+      const partnerId = matchUser.telegram_id || matchUser.tg_id;
+      addToBlacklist(partnerId);
+    }
+
     socket.emit('leave_chat');
 
     setMatchUser(null);
@@ -125,7 +166,9 @@ export function ChatPage({ onNext }) {
 
     if (currentUser) {
       setIsSearching(true);
-      socket.emit('find_match', { tg_id: currentUser.telegram_id || currentUser.tg_id });
+      const myId = currentUser.telegram_id || currentUser.tg_id;
+      const blacklist = getBlacklist();
+      socket.emit('find_match', { tg_id: myId, blacklist });
     }
   };
 
@@ -202,7 +245,7 @@ export function ChatPage({ onNext }) {
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'none' }} onClick={() => setReportOpen(false)}>
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: '56px', background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
+            <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.6" width="26" height="26">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
