@@ -1,17 +1,59 @@
 const API_URL = 'https://tgbot-backend-r3ei.onrender.com/api/users';
 
-// Telegramdan kelgan ID yoki standart test ID
-export const getTelegramId = () => {
-  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user?.id) {
-    return window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+const extractIdFromInitData = (initData) => {
+  if (!initData) {
+    return null;
   }
-  return '6473619912'; // Test uchun standart ID
+
+  const params = new URLSearchParams(initData);
+  const userJson = params.get('user');
+  if (!userJson) {
+    return null;
+  }
+
+  try {
+    const user = JSON.parse(userJson);
+    return user?.id ? user.id.toString() : null;
+  } catch (error) {
+    console.error('Telegram initData dagi user JSON noto‘g‘ri:', error);
+    return null;
+  }
+};
+
+// Telegramdan kelgan ID (test uchun URL'dan tg_id berish mumkin)
+export const getTelegramId = () => {
+  const webApp = window.Telegram?.WebApp;
+  const unsafeUserId = webApp?.initDataUnsafe?.user?.id;
+  if (unsafeUserId) {
+    return unsafeUserId.toString();
+  }
+
+  const initDataUserId = extractIdFromInitData(webApp?.initData);
+  if (initDataUserId) {
+    return initDataUserId;
+  }
+
+  const debugId = new URLSearchParams(window.location.search).get('tg_id');
+  if (debugId) {
+    return debugId;
+  }
+
+  return null;
 };
 
 export async function fetchUser() {
   const tg_id = getTelegramId();
+
+  if (!tg_id) {
+    console.error("Telegram ID topilmadi. Ilovani Telegram WebApp ichida oching.");
+    return null;
+  }
+
   try {
     const response = await fetch(`${API_URL}/${tg_id}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     const data = await response.json();
     console.log(data);
     
