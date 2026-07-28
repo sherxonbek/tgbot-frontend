@@ -1,9 +1,11 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { BackIcon, ChevronRight, StarIcon, SupportIcon } from '../assets/icon';
 import { PlanBadge } from '../components/PlanBadge';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
 
 const sectionStyle = {
   background: 'rgba(255,255,255,0.04)',
@@ -78,6 +80,15 @@ export function SettingsRow({ icon, label, sub, accent, onClick }) {
 export function SettingsPage() {
   const navigate = useNavigate();
   const user = useCurrentUser();
+  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+
+  useEffect(() => {
+    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+  }, [user?.avatar]);
+
+  const handleImgError = () => {
+    setCurrentAvatar(DEFAULT_AVATAR);
+  };
 
   return (
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh' }}>
@@ -93,8 +104,10 @@ export function SettingsPage() {
       <div className="mx-4 mt-5 mb-2 rounded-2xl flex flex-col items-center py-6 px-4" style={sectionStyle}>
         <div className="relative">
           <img
-            src={user?.avatar}
+            src={currentAvatar}
             alt={user?.name}
+            key={currentAvatar}
+            onError={handleImgError}
             className="rounded-full object-cover"
             style={{
               width: 76,

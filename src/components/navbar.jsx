@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { PlanBadge } from './PlanBadge';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useUser } from '../context/UserContext';
+
+const DEFAULT_AVATAR = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT790pvuDkByWrXxTt_Tv0lZuEdYSkrf-8Z-rDs9BJK2w&s';
 
 const headerStyle = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
 const avatarStyle = {
@@ -10,7 +13,17 @@ const avatarStyle = {
 };
 
 export function Navbar() {
-  const user = useCurrentUser();
+  const { user } = useUser();
+  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+
+  // User ma'lumoti localStorage dan yoki serverdan kelganda avatar URL ni yangilaymiz
+  useEffect(() => {
+    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+  }, [user?.avatar]);
+
+  const handleImgError = () => {
+    setCurrentAvatar(DEFAULT_AVATAR);
+  };
 
   if (!user) {
     return (
@@ -26,8 +39,10 @@ export function Navbar() {
     <header className="flex items-center justify-between px-4 pt-4 pb-3" style={headerStyle}>
       <div className="flex items-center gap-3">
         <img
-          src={user.avatar}
+          src={currentAvatar}
           alt={user.name}
+          key={currentAvatar}
+          onError={handleImgError}
           className="rounded-full object-cover flex-shrink-0"
           style={avatarStyle}
         />
