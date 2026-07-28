@@ -58,7 +58,7 @@ function NotificationDropdown({ onClose }) {
   return (
     <div
       className="absolute right-0 top-full mt-2 z-50 origin-top-right animate-fade-in-up"
-      style={{ width: 320, maxHeight: 400 }}
+      style={{ width: 320, maxWidth: 'calc(100vw - 32px)', maxHeight: 400 }}
     >
       <div
         className="rounded-2xl overflow-hidden"
