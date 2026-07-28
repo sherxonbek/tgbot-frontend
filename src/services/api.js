@@ -246,6 +246,38 @@ export async function sendBroadcast(message, filter = {}) {
   return response.json();
 }
 
+// ─── Notifications API ─────────────────────────────────────────────────────
+
+export async function fetchNotifications(page = 1) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/notifications?page=${page}`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Bildirishnomalarni olishda xatolik');
+  return response.json();
+}
+
+export async function markNotificationsRead() {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/notifications/read-all`, {
+    method: 'PATCH',
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  return response.json();
+}
+
+export async function fetchUnreadCount() {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) return { count: 0 };
+  return response.json();
+}
+
 export async function updateUserStatus(tgId, status) {
   try {
     const initData = getTelegramInitData();
