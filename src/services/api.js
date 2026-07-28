@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://tgbot-backend-r3ei.onrender.com';
 const API_URL = `${API_BASE}/api/users`;
 const AUTH_URL = `${API_BASE}/api/auth/telegram`;
 
