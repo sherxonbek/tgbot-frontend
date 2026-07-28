@@ -4,24 +4,6 @@ import { authenticateWithTelegram, fetchCurrentUser } from '../services/api';
 const CACHE_KEY = 'cached_user_data';
 const UserContext = createContext(null);
 
-// LocalStorage dan userni o'qish
-function loadCachedUser() {
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const data = JSON.parse(cached);
-      // 1 soatdan eski bo'lsa, cached ni o'chirib tashlaymiz
-      if (data._cachedAt && Date.now() - data._cachedAt < 3600000) {
-        return data;
-      }
-      localStorage.removeItem(CACHE_KEY);
-    }
-  } catch {
-    localStorage.removeItem(CACHE_KEY);
-  }
-  return null;
-}
-
 // Userni localStorage ga saqlash
 function cacheUser(data) {
   if (!data) return;
@@ -31,7 +13,6 @@ function cacheUser(data) {
       _cachedAt: Date.now(),
     }));
   } catch {
-    // localStorage to'la bo'lsa, eski cache ni o'chirib qayta yozamiz
     localStorage.removeItem(CACHE_KEY);
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -42,10 +23,27 @@ function cacheUser(data) {
   }
 }
 
+// LocalStorage dan userni o'qish
+function loadCachedUser() {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const data = JSON.parse(cached);
+      if (data._cachedAt && Date.now() - data._cachedAt < 86400000) { // 24 soat
+        return data;
+      }
+      localStorage.removeItem(CACHE_KEY);
+    }
+  } catch {
+    localStorage.removeItem(CACHE_KEY);
+  }
+  return null;
+}
+
 export function UserProvider({ children }) {
-  // Avval cached ma'lumotni yuklaymiz (agar bo'lsa)
-  const [user, setUser] = useState(() => loadCachedUser());
-  const [loading, setLoading] = useState(!user); // Cache bo'lsa loading=false
+  // loading always starts as TRUE — user to'liq kelguncha hech narsa chizilmaydi
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
     const data = await fetchCurrentUser();
@@ -61,34 +59,41 @@ export function UserProvider({ children }) {
 
     const init = async () => {
       try {
+        // 1. Serverga so'rov yuboramiz
         const authResult = await authenticateWithTelegram();
         if (cancelled) return;
 
         if (!authResult) {
-          // Auth xatoligi — cached user bo'lsa, uni ishlatishda davom etamiz
-          // Agar cached user bo'lmasa, loading ni to'xtatamiz
-          setLoading(false);
+          // 2a. Auth xatosi — cached ma'lumot bormi?
+          const cached = loadCachedUser();
+          if (!cancelled) {
+            setUser(cached);
+            setLoading(false);
+          }
           return;
         }
 
-        // User ma'lumotini serverdan olish
+        // 3. Foydalanuvchi ma'lumotini serverdan olamiz
         const data = await fetchCurrentUser();
         if (cancelled) return;
 
         if (data) {
+          // 4a. Serverdan to'liq ma'lumot keldi — loading ni o'chiramiz
           setUser(data);
           cacheUser(data);
           setLoading(false);
         } else {
-          // Serverda user topilmasa, cached user bo'lsa uni o'chirib tashlaymiz
-          localStorage.removeItem(CACHE_KEY);
-          setUser(null);
+          // 4b. Serverda user topilmadi — cached ma'lumot bormi?
+          const cached = loadCachedUser();
+          setUser(cached);
           setLoading(false);
         }
       } catch (error) {
         console.error('User init error:', error);
         if (!cancelled) {
-          // Xatolik bo'lsa, cached user bilan davom etamiz (agar bo'lsa)
+          // 5. Xatolik — cached ma'lumot bilan davom etamiz
+          const cached = loadCachedUser();
+          setUser(cached);
           setLoading(false);
         }
       }

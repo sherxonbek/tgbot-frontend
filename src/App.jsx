@@ -15,6 +15,7 @@ export default function App() {
 
   const { user, loading } = useUser();
 
+  // 1. Serverdan javob kutilyapti
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
@@ -26,6 +27,7 @@ export default function App() {
     );
   }
 
+  // 2. User topilmadi — ro'yxatdan o'tmagan
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
@@ -36,6 +38,7 @@ export default function App() {
     );
   }
 
+  // 3. Hamma ma'lumot to'liq — UI chizamiz
   return (
     <BrowserRouter>
       <Routes>
