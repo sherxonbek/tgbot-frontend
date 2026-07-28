@@ -1,11 +1,18 @@
-import { Fragment, useState, useEffect } from 'react';
-import { BackIcon, ChevronRight, StarIcon, SupportIcon } from '../assets/icon';
+import { Fragment, useState, useEffect, useRef } from 'react';
+import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon } from '../assets/icon';
 import { PlanBadge } from '../components/PlanBadge';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { updateUserProfile, uploadImage } from '../services/api';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
+
+const REGIONS = [
+  "Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro",
+  "Farg'ona", "Andijon", "Namangan", "Qashqadaryo",
+  "Surxondaryo", "Jizzax", "Sirdaryo", "Navoiy", "Xorazm", "Qoraqalpog'iston"
+];
 
 const sectionStyle = {
   background: 'rgba(255,255,255,0.04)',
@@ -35,6 +42,41 @@ const settingsRows = [
     sub: "Xatoliklar, takliflar yoki yordam uchun murojaat qiling",
   },
 ];
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="18" height="18">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function LoaderSpinner() {
+  return (
+    <svg className="animate-spin" viewBox="0 0 24 24" fill="none" width="18" height="18">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
 
 export function SettingsRow({ icon, label, sub, accent, onClick }) {
   const [hover, setHover] = useState(false);
@@ -79,43 +121,261 @@ export function SettingsRow({ icon, label, sub, accent, onClick }) {
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
+  const fileInputRef = useRef(null);
+
   const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+  const [name, setName] = useState(user?.name || '');
+  const [region, setRegion] = useState(user?.region || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [avatarHover, setAvatarHover] = useState(false);
+  const [changedFields, setChangedFields] = useState({});
 
   useEffect(() => {
     setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
-  }, [user?.avatar]);
+    setName(user?.name || '');
+    setRegion(user?.region || '');
+  }, [user?.avatar, user?.name, user?.region]);
 
   const handleImgError = () => {
     setCurrentAvatar(DEFAULT_AVATAR);
   };
 
+  // Avatar tanlash
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setCurrentAvatar(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server
+    setUploading(true);
+    setError('');
+    try {
+      const result = await uploadImage(file);
+      if (result?.mediaUrl) {
+        setChangedFields(prev => ({ ...prev, avatar: result.mediaUrl }));
+      }
+    } catch (err) {
+      setError(err.message || 'Rasm yuklanmadi');
+      setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Saqlash
+  const handleSave = async () => {
+    if (!user?.tg_id) return;
+
+    // Validate name
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      setError('Ism kamida 2 harfdan iborat bo\'lishi kerak');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const updates = {};
+      if (changedFields.name) updates.name = trimmedName;
+      if (changedFields.region) updates.region = region;
+      if (changedFields.avatar) updates.avatar = changedFields.avatar;
+
+      if (Object.keys(updates).length === 0) {
+        setIsEditing(false);
+        setSaving(false);
+        return;
+      }
+
+      const updatedUser = await updateUserProfile(user.tg_id, updates);
+      if (updatedUser) {
+        setSuccess(true);
+        setChangedFields({});
+        setTimeout(() => setSuccess(false), 2500);
+        setIsEditing(false);
+        await refreshUser();
+      }
+    } catch (err) {
+      setError(err.message || 'Xatolik yuz berdi');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Bekor qilish
+  const handleCancel = () => {
+    setName(user?.name || '');
+    setRegion(user?.region || '');
+    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+    setChangedFields({});
+    setError('');
+    setIsEditing(false);
+    setShowRegionPicker(false);
+  };
+
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#f0effc',
+    borderRadius: 12,
+    padding: '12px 16px',
+    fontSize: 14,
+    width: '100%',
+    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  };
+
+  const inputFocusStyle = {
+    borderColor: 'rgba(124,90,240,0.5)',
+    boxShadow: '0 0 0 3px rgba(124,90,240,0.15)',
+  };
+
   return (
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh' }}>
-      <header className="flex items-center gap-3 px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <IconButton onClick={() => navigate('/')} className="rounded-xl" style={backButtonStyle} aria-label="Go back">
+      {/* Header */}
+      <header
+        className="flex items-center gap-3 px-4 pt-4 pb-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <IconButton
+          onClick={() => (isEditing ? handleCancel() : navigate('/'))}
+          className="rounded-xl"
+          style={backButtonStyle}
+          aria-label="Go back"
+        >
           <BackIcon />
         </IconButton>
         <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
-          Sozlamalar
+          {isEditing ? 'Profilni tahrirlash' : 'Sozlamalar'}
         </span>
+
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{
+              background: 'rgba(124,90,240,0.15)',
+              color: '#a78bfa',
+              border: '1px solid rgba(124,90,240,0.2)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(124,90,240,0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(124,90,240,0.15)';
+            }}
+          >
+            <EditIcon />
+            Tahrirlash
+          </button>
+        )}
       </header>
 
-      <div className="mx-4 mt-5 mb-2 rounded-2xl flex flex-col items-center py-6 px-4" style={sectionStyle}>
-        <div className="relative">
-          <img
-            src={currentAvatar}
-            alt={user?.name}
-            key={currentAvatar}
-            onError={handleImgError}
-            className="rounded-full object-cover"
+      {/* Success toast */}
+      {success && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium animate-bounce-in"
+          style={{
+            background: 'rgba(16,185,129,0.2)',
+            border: '1px solid rgba(16,185,129,0.3)',
+            color: '#6ee7b7',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <CheckIcon />
+          Profil muvaffaqiyatli yangilandi!
+        </div>
+      )}
+
+      {/* Profile Card */}
+      <div
+        className="mx-4 mt-5 mb-2 rounded-2xl flex flex-col items-center py-6 px-4 relative overflow-hidden"
+        style={sectionStyle}
+      >
+        {isEditing && (
+          <div
+            className="absolute inset-0 pointer-events-none"
             style={{
-              width: 76,
-              height: 76,
-              border: '2.5px solid rgba(124,90,240,0.65)',
-              boxShadow: '0 0 20px rgba(124,90,240,0.35)',
+              background: 'radial-gradient(circle at 50% 0%, rgba(124,90,240,0.06) 0%, transparent 60%)',
             }}
           />
+        )}
+
+        {/* Avatar */}
+        <div className="relative" style={{ marginBottom: isEditing ? 4 : 0 }}>
+          <div
+            className="relative"
+            onMouseEnter={() => setAvatarHover(true)}
+            onMouseLeave={() => setAvatarHover(false)}
+            style={{ cursor: isEditing ? 'pointer' : 'default' }}
+            onClick={isEditing ? handleAvatarClick : undefined}
+          >
+            <img
+              src={currentAvatar}
+              alt={user?.name}
+              key={currentAvatar}
+              onError={handleImgError}
+              className="rounded-full object-cover transition-all duration-300"
+              style={{
+                width: isEditing ? 88 : 76,
+                height: isEditing ? 88 : 76,
+                border: '2.5px solid rgba(124,90,240,0.65)',
+                boxShadow: avatarHover
+                  ? '0 0 30px rgba(124,90,240,0.5)'
+                  : '0 0 20px rgba(124,90,240,0.35)',
+                filter: uploading ? 'brightness(0.6)' : 'none',
+                transition: 'all 0.3s ease',
+              }}
+            />
+
+            {/* Upload overlay */}
+            {isEditing && (
+              <div
+                className="absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200"
+                style={{
+                  background: avatarHover ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+                  opacity: avatarHover || uploading ? 1 : 0,
+                }}
+              >
+                {uploading ? (
+                  <div style={{ color: '#fff' }}>
+                    <LoaderSpinner />
+                  </div>
+                ) : (
+                  <div style={{ color: '#fff', transform: 'scale(1.2)' }}>
+                    <CameraIcon />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+          </div>
+
           {user?.plan === 'VIP' && (
             <div
               className="absolute -bottom-1 -right-1 flex items-center justify-center rounded-full"
@@ -131,27 +391,235 @@ export function SettingsPage() {
           )}
         </div>
 
-        <div className="mt-3 text-base font-semibold" style={{ color: '#f0effc' }}>
-          {user?.name}
-        </div>
-        <div className="text-xs mt-0.5 mb-3" style={{ color: 'rgba(255,255,255,0.38)' }}>
-          {user?.username}
-        </div>
-        <PlanBadge plan={user?.plan} />
+        {/* Editing form */}
+        {isEditing ? (
+          <div className="w-full mt-4 space-y-3" style={{ maxWidth: 320 }}>
+            {/* Name field */}
+            <div>
+              <label
+                className="text-xs font-medium mb-1.5 block"
+                style={{ color: 'rgba(255,255,255,0.5)' }}
+              >
+                Ism familiya
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setChangedFields(prev => ({ ...prev, name: true }));
+                  setError('');
+                }}
+                placeholder="Ismingizni kiriting"
+                style={inputStyle}
+                onFocus={(e) => {
+                  Object.assign(e.currentTarget.style, inputFocusStyle);
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                maxLength={50}
+              />
+            </div>
+
+            {/* Region selector */}
+            <div>
+              <label
+                className="text-xs font-medium mb-1.5 block"
+                style={{ color: 'rgba(255,255,255,0.5)' }}
+              >
+                Viloyat
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowRegionPicker(!showRegionPicker)}
+                  style={{
+                    ...inputStyle,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    borderColor: showRegionPicker ? 'rgba(124,90,240,0.5)' : 'rgba(255,255,255,0.1)',
+                    boxShadow: showRegionPicker ? '0 0 0 3px rgba(124,90,240,0.15)' : 'none',
+                    color: region ? '#f0effc' : 'rgba(255,255,255,0.3)',
+                  }}
+                >
+                  <span>{region || 'Viloyatingizni tanlang'}</span>
+                  <span style={{
+                    transform: showRegionPicker ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s',
+                    color: 'rgba(255,255,255,0.4)',
+                  }}>
+                    <ChevronDown />
+                  </span>
+                </button>
+
+                {showRegionPicker && (
+                  <div
+                    className="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden animate-slide-up"
+                    style={{
+                      background: '#15151f',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                      maxHeight: 240,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {REGIONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          setRegion(r);
+                          setChangedFields(prev => ({ ...prev, region: true }));
+                          setShowRegionPicker(false);
+                          setError('');
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm transition-colors"
+                        style={{
+                          color: region === r ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+                          background: region === r ? 'rgba(124,90,240,0.1)' : 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (region !== r) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (region !== r) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{r}</span>
+                          {region === r && (
+                            <span style={{ color: '#a78bfa' }}>
+                              <CheckIcon />
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <div
+                className="text-xs mt-1 animate-shake"
+                style={{ color: '#f87171' }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.6)',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }}
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || Object.keys(changedFields).length === 0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+                style={{
+                  background: saving
+                    ? 'rgba(124,90,240,0.4)'
+                    : 'linear-gradient(135deg, #7c5af0, #6d4bd6)',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: saving || Object.keys(changedFields).length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: Object.keys(changedFields).length === 0 ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!saving && Object.keys(changedFields).length > 0) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #8c6af8, #7d5be6)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!saving) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #7c5af0, #6d4bd6)';
+                  }
+                }}
+              >
+                {saving ? (
+                  <>
+                    <LoaderSpinner />
+                    Saqlanmoqda...
+                  </>
+                ) : (
+                  'Saqlash'
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Display mode */}
+            <div className="mt-3 text-base font-semibold" style={{ color: '#f0effc' }}>
+              {user?.name}
+            </div>
+            <div className="text-xs mt-0.5 mb-1" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              {user?.username}
+            </div>
+            <div
+              className="flex items-center gap-1.5 text-xs mt-1 mb-1"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span>{user?.region || "Viloyat ko'rsatilmagan"}</span>
+            </div>
+            <PlanBadge plan={user?.plan} />
+          </>
+        )}
       </div>
 
-      <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
-        {settingsRows.map((row, index) => (
-          <Fragment key={row.label}>
-            {index > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />}
-            <SettingsRow icon={row.icon} label={row.label} sub={row.sub} accent={row.accent} onClick={() => {}} />
-          </Fragment>
-        ))}
-      </div>
+      {/* Settings rows - only show when not editing */}
+      {!isEditing && (
+        <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+          {settingsRows.map((row, index) => (
+            <Fragment key={row.label}>
+              {index > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />}
+              <SettingsRow icon={row.icon} label={row.label} sub={row.sub} accent={row.accent} onClick={() => {}} />
+            </Fragment>
+          ))}
+        </div>
+      )}
 
       <div className="mt-auto pb-8 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
         v1.0.0 · Telegram Web App
       </div>
+
+      {/* Click outside to close region picker */}
+      {showRegionPicker && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowRegionPicker(false)}
+          style={{ background: 'transparent' }}
+        />
+      )}
     </div>
   );
 }

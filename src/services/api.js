@@ -88,6 +88,54 @@ export async function fetchCurrentUser() {
   }
 }
 
+export async function updateUserProfile(tgId, data) {
+  try {
+    const initData = getTelegramInitData();
+    const response = await fetch(`${API_URL}/${tgId}/profile`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-telegram-init-data': initData,
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Profilni yangilashda xatolik');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Profilni yangilashda xatolik:', error);
+    throw error;
+  }
+}
+
+export async function uploadImage(file) {
+  const initData = getTelegramInitData();
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`${API_BASE}/api/upload/image`, {
+      method: 'POST',
+      headers: {
+        'x-telegram-init-data': initData,
+      },
+      credentials: 'include',
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Rasm yuklashda xatolik');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Rasm yuklashda xatolik:', error);
+    throw error;
+  }
+}
+
 export async function updateUserStatus(tgId, status) {
   try {
     const initData = getTelegramInitData();
