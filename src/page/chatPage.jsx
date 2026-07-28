@@ -1,37 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
-import { FlagIcon, SendIcon, SkipIcon } from '../assets/icon';
-import { Navbar } from '../components/navbar';
-import MessageBubble from '../components/MessageBubble';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { SkipIcon, FlagIcon, SendIcon, ImageIcon, CheckIcon } from '../assets/icon';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
-import { socket } from '../services/socket';
+import MessageBubble from '../components/MessageBubble';
+import { Navbar } from '../components/navbar';
+import { socket, connectSocket } from '../services/socket';
+import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
 
-const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'behayo kontent', 'Soxta profil'];
-const RECENT_MATCHES_STORAGE_KEY = 'recent_matched_partners';
-const THREE_MINUTES_MS = 3 * 60 * 1000;
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
 
-const readActivePartnerHistory = () => {
-  const nowTime = Date.now();
-
+function readMessageIds() {
   try {
-    const history = JSON.parse(localStorage.getItem(RECENT_MATCHES_STORAGE_KEY) || '{}');
-    const activeHistory = {};
-
-    for (const [id, expireTime] of Object.entries(history)) {
-      if (expireTime > nowTime) {
-        activeHistory[id] = expireTime;
-      }
-    }
-
-    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
-    return activeHistory;
-  } catch (error) {
-    console.error('recent_matched_partners parse xatoligi:', error);
-    localStorage.removeItem(RECENT_MATCHES_STORAGE_KEY);
-    return {};
+    return JSON.parse(localStorage.getItem('read_message_ids') || '[]');
+  } catch {
+    return [];
   }
-};
+}
+
+function markAsReadLocally(messageId) {
+  const ids = readMessageIds();
+  if (!ids.includes(messageId)) {
+    ids.push(messageId);
+    localStorage.setItem('read_message_ids', JSON.stringify(ids));
+  }
+}
+
+function isReadLocally(messageId) {
+  return readMessageIds().includes(messageId);
+}
 
 export function ChatPage() {
   const currentUser = useCurrentUser();
@@ -39,141 +37,267 @@ export function ChatPage() {
     const saved = sessionStorage.getItem('matchUser');
     return saved ? JSON.parse(saved) : null;
   });
-  
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const typingTimerRef = useRef(null);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const savePartnerToLocalStorage = (partnerId) => {
-    if (!partnerId) return;
-
-    const activeHistory = readActivePartnerHistory();
-    activeHistory[String(partnerId)] = Date.now() + THREE_MINUTES_MS;
-    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
-  };
-
-  const getBlacklist = () => Object.keys(readActivePartnerHistory());
+  // Load chat history when match user is set
+  useEffect(() => {
+    if (matchUser && socket.connected) {
+      socket.emit('get_chat_history', { partnerTgId: matchUser.tg_id });
+    }
+  }, [matchUser]);
 
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
+    if (!socket.connected && currentUser) {
+      connectSocket(currentUser.tg_id);
     }
 
-    socket.on('matched', (data) => {
+    const onMatched = (data) => {
       setMatchUser(data.partner);
       sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
-
-      const partnerId = data.partner?.telegram_id || data.partner?.tg_id;
-      savePartnerToLocalStorage(partnerId);
-
+      savePartnerToLocalStorage(data.partner?.tg_id);
       setIsSearching(false);
       setMessages([]);
-    });
+    };
 
-    socket.on('waiting', () => {
-      setIsSearching(true);
-    });
+    const onWaiting = () => setIsSearching(true);
 
-    socket.on('partner_left', () => {
+    const onPartnerLeft = () => {
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
       setMessages([]);
-      
       if (currentUser) {
         setIsSearching(true);
-        const myId = currentUser.telegram_id || currentUser.tg_id;
-        const blacklist = getBlacklist(); 
-        socket.emit('find_match', { tg_id: myId, blacklist });
+        socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
       }
-    });
+    };
 
-    // Real vaqtda narigi tarafdan kelgan xabarni qabul qilish
-    socket.on('receive_message', (messageData) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: messageData.id,
-          text: messageData.text,
-          from: 'them',
-          senderTgId: messageData.senderTgId,
-          time: messageData.time,
-        },
-      ]);
-    });
+    const onChatHistory = (history) => {
+      setMessages(history);
+    };
+
+    const onReceiveMessage = (messageData) => {
+      setMessages((prev) => [...prev, messageData]);
+
+      // Mark as read if chat is visible
+      if (messageData.from === 'them' && matchUser) {
+        const messageIds = [messageData.id];
+        socket.emit('message_read', { messageIds, senderTgId: messageData.senderTgId });
+        markAsReadLocally(messageData.id);
+      }
+    };
+
+    const onMessagesRead = ({ messageIds }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          messageIds.includes(msg.id) ? { ...msg, read: true } : msg
+        )
+      );
+    };
+
+    const onMessageSent = ({ tempId, serverId, time }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, id: serverId, time: time || msg.time } : msg
+        )
+      );
+    };
+
+    const onMessageDelivered = ({ messageId, status }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, delivered: status } : msg
+        )
+      );
+    };
+
+    const onPartnerTyping = () => setPartnerTyping(true);
+    const onPartnerStopTyping = () => setPartnerTyping(false);
+
+    socket.on('matched', onMatched);
+    socket.on('waiting', onWaiting);
+    socket.on('partner_left', onPartnerLeft);
+    socket.on('chat_history', onChatHistory);
+    socket.on('receive_message', onReceiveMessage);
+    socket.on('messages_read', onMessagesRead);
+    socket.on('message_sent', onMessageSent);
+    socket.on('message_delivered', onMessageDelivered);
+    socket.on('partner_typing', onPartnerTyping);
+    socket.on('partner_stop_typing', onPartnerStopTyping);
 
     return () => {
-      socket.off('matched');
-      socket.off('waiting');
-      socket.off('partner_left');
-      socket.off('receive_message');
+      socket.off('matched', onMatched);
+      socket.off('waiting', onWaiting);
+      socket.off('partner_left', onPartnerLeft);
+      socket.off('chat_history', onChatHistory);
+      socket.off('receive_message', onReceiveMessage);
+      socket.off('messages_read', onMessagesRead);
+      socket.off('message_sent', onMessageSent);
+      socket.off('message_delivered', onMessageDelivered);
+      socket.off('partner_typing', onPartnerTyping);
+      socket.off('partner_stop_typing', onPartnerStopTyping);
     };
-  }, [currentUser]);
+  }, [currentUser, matchUser]);
 
   const handleNextUser = () => {
     socket.emit('leave_chat');
-
     setMatchUser(null);
     sessionStorage.removeItem('matchUser');
     setMessages([]);
-    
     if (currentUser) {
       setIsSearching(true);
-      const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist(); 
-      socket.emit('find_match', { tg_id: myId, blacklist });
+      socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
     }
   };
 
   const sendMessage = () => {
     const text = input.trim();
-    if (!text || !currentUser) return;
+    if (!text || !currentUser || !matchUser) return;
 
-    const myId = currentUser.telegram_id || currentUser.tg_id;
+    const tempId = Date.now();
     const newMessage = {
-      id: Date.now(),
+      id: tempId,
       text,
+      type: 'text',
       from: 'me',
-      senderTgId: myId,
+      senderTgId: currentUser.tg_id,
+      recipientTgId: matchUser.tg_id,
+      read: false,
       time: now(),
     };
 
     setSending(true);
     setMessages((prev) => [...prev, newMessage]);
     setInput('');
+    setPartnerTyping(false);
 
-    // Xabarni server orqali suhbatdoshga jo'natamiz
-    socket.emit('send_message', newMessage);
+    socket.emit('send_message', { ...newMessage, tempId });
+    setTimeout(() => setSending(false), 300);
+  };
 
-    window.setTimeout(() => setSending(false), 300);
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    if (!matchUser?.tg_id) return;
+    if (!typingTimerRef.current) {
+      socket.emit('typing', { recipientTgId: matchUser.tg_id });
+    }
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      socket.emit('stop_typing', { recipientTgId: matchUser.tg_id });
+      typingTimerRef.current = null;
+    }, 1000);
+  };
+
+  // Image upload handler
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser || !matchUser) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Faqat rasm fayllari yuklash mumkin');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Rasm hajmi 5MB dan oshmasligi kerak');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/upload/image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message);
+
+      const newMessage = {
+        id: Date.now(),
+        text: '',
+        type: 'image',
+        mediaUrl: `${API_BASE}${data.mediaUrl}`,
+        from: 'me',
+        senderTgId: currentUser.tg_id,
+        recipientTgId: matchUser.tg_id,
+        read: false,
+        time: now(),
+      };
+
+      setMessages((prev) => [...prev, newMessage]);
+      socket.emit('send_message', { ...newMessage, tempId: newMessage.id });
+    } catch (error) {
+      console.error('Rasm yuklash xatosi:', error);
+      alert('Rasm yuklanmadi. Qayta urinib ko\'ring.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleReport = async (reason) => {
+    setReportOpen(false);
+
+    if (!currentUser || !matchUser) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          reportedTgId: matchUser.tg_id,
+          reason,
+          chatContext: messagesRef.current.slice(-5).map(m => `${m.from}: ${m.text}`).join('\n'),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setReportSent(true);
+        setTimeout(() => setReportSent(false), 3000);
+      }
+    } catch (error) {
+      console.error('Shikoyat yuborish xatosi:', error);
+    }
+
+    // Leave chat after report
+    socket.emit('leave_chat');
+    setMatchUser(null);
+    sessionStorage.removeItem('matchUser');
+    setMessages([]);
+    if (currentUser) {
+      setIsSearching(true);
+      socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
+    }
   };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, partnerTyping]);
 
-  const handleReport = () => {
-    setReportOpen(false);
-    socket.emit('leave_chat');
-
-    setMatchUser(null);
-    sessionStorage.removeItem('matchUser');
-    setMessages([]);
-
-    if (currentUser) {
-      setIsSearching(true);
-      const myId = currentUser.telegram_id || currentUser.tg_id;
-      const blacklist = getBlacklist(); 
-      socket.emit('find_match', { tg_id: myId, blacklist });
-    }
-  };
-
+  // Searching / No match page
   if (!matchUser || isSearching) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
@@ -183,7 +307,7 @@ export function ChatPage() {
             Faol foydalanuvchi qidirilmoqda...
           </p>
           <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            Iltimos, ozgina kuting, boshqa ishtirokchi ulanishiga qarab qidiruv davom etmoqda.
+            Iltimos, ozgina kuting...
           </p>
         </div>
         <button
@@ -201,6 +325,7 @@ export function ChatPage() {
     <div className="slide-in-right flex flex-col" style={{ height: '100dvh' }}>
       <Navbar />
 
+      {/* Actions bar */}
       <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
         <button
           onClick={handleNextUser}
@@ -212,6 +337,27 @@ export function ChatPage() {
           <SkipIcon />
           Next
         </button>
+
+        <div className="flex-1" />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+          style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80', cursor: 'pointer', opacity: uploading ? 0.5 : 1 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.1)'; }}
+        >
+          <ImageIcon />
+          {uploading ? 'Yuklanmoqda...' : 'Rasm'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          style={{ display: 'none' }}
+        />
 
         <div className="relative">
           <button
@@ -229,7 +375,7 @@ export function ChatPage() {
               {REPORT_REASONS.map((reason) => (
                 <button
                   key={reason}
-                  onClick={handleReport}
+                  onClick={() => handleReport(reason)}
                   className="w-full text-left text-xs px-4 py-3 transition-colors block"
                   style={{ color: '#f0effc', background: 'none', border: 'none', cursor: 'pointer' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
@@ -243,8 +389,16 @@ export function ChatPage() {
         </div>
       </div>
 
+      {/* Report sent toast */}
+      {reportSent && (
+        <div className="px-4 py-2 text-xs text-center" style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>
+          ✅ Shikoyatingiz qabul qilindi. Administrator tekshiradi.
+        </div>
+      )}
+
+      {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'none' }} onClick={() => setReportOpen(false)}>
-        {messages.length === 0 ? (
+        {messages.length === 0 && !partnerTyping ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.6" width="26" height="26">
@@ -262,19 +416,32 @@ export function ChatPage() {
                 key={message.id}
                 message={message}
                 prevSame={index > 0 && messages[index - 1].from === message.from}
-                isMe={message.from === 'me'}
+              isMe={message.from === 'me'}
               />
             ))}
+            {partnerTyping && (
+              <div className="flex items-center gap-2 px-1 py-1 slide-in-right">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" style={{ animation: 'bounce 1s ease-in-out infinite', animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" style={{ animation: 'bounce 1s ease-in-out infinite', animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" style={{ animation: 'bounce 1s ease-in-out infinite', animationDelay: '300ms' }} />
+                </span>
+                <span className="text-xs" style={{ color: 'rgba(167,139,250,0.7)' }}>
+                  {matchUser?.name || 'Suhbatdosh'} yozmoqda...
+                </span>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         )}
       </div>
 
+      {/* Input area */}
       <div className="flex-shrink-0 px-3 py-3 flex items-end gap-2 mb-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,18,0.95)', backdropFilter: 'blur(16px)', paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
         <div className="flex-1 flex items-end rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', minHeight: 44, maxHeight: 120 }}>
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

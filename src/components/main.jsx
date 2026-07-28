@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScannerHeart } from './ScannerHeart';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { socket } from '../services/socket';
-
-const RECENT_MATCHES_STORAGE_KEY = 'recent_matched_partners';
-const THREE_MINUTES_MS = 3 * 60 * 1000;
+import { socket, connectSocket } from '../services/socket';
+import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
 
 const searchButtonStyle = {
     background: 'rgba(124,90,240,0.12)',
@@ -14,75 +12,43 @@ const searchButtonStyle = {
     cursor: 'pointer',
 };
 
-const readActivePartnerHistory = () => {
-    const nowTime = Date.now();
-
-    try {
-        const history = JSON.parse(localStorage.getItem(RECENT_MATCHES_STORAGE_KEY) || '{}');
-        const activeHistory = {};
-
-        for (const [id, expireTime] of Object.entries(history)) {
-            if (expireTime > nowTime) {
-                activeHistory[id] = expireTime;
-            }
-        }
-
-        localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
-        return activeHistory;
-    } catch (error) {
-        console.error('recent_matched_partners parse xatoligi:', error);
-        localStorage.removeItem(RECENT_MATCHES_STORAGE_KEY);
-        return {};
-    }
-};
-
-const savePartnerToLocalStorage = (partnerId) => {
-    if (!partnerId) return;
-    const activeHistory = readActivePartnerHistory();
-    activeHistory[String(partnerId)] = Date.now() + THREE_MINUTES_MS;
-    localStorage.setItem(RECENT_MATCHES_STORAGE_KEY, JSON.stringify(activeHistory));
-};
-
-const getBlacklist = () => Object.keys(readActivePartnerHistory());
-
 export function Main() {
     const currentUser = useCurrentUser();
     const navigate = useNavigate();
     const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        if (!socket.connected) {
-            socket.connect();
+        if (!socket.connected && currentUser) {
+            const userTgId = currentUser.tg_id;
+            connectSocket(userTgId);
         }
 
-        // Juft topilganda chat sahifasiga o'tkazish va partner ma'lumotini saqlash
-        socket.on('matched', (data) => {
+        const onMatched = (data) => {
             setIsSearching(false);
-            const partnerId = data.partner?.telegram_id || data.partner?.tg_id;
+            const partnerId = data.partner?.tg_id;
             savePartnerToLocalStorage(partnerId);
-            // Partner ma'lumotini sessionStorage ga saqlab chatga o'tamiz
             sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
             navigate('/chat');
-        });
+        };
 
-        socket.on('waiting', () => {
+        const onWaiting = () => {
             setIsSearching(true);
-        });
+        };
+
+        socket.on('matched', onMatched);
+        socket.on('waiting', onWaiting);
 
         return () => {
-            socket.off('matched');
-            socket.off('waiting');
+            socket.off('matched', onMatched);
+            socket.off('waiting', onWaiting);
         };
-    }, [navigate]);
+    }, [navigate, currentUser]);
 
     const handleSearch = () => {
         if (!currentUser) return;
         setIsSearching(true);
 
-        // Foydalanuvchining id si aniq borligini tekshirib yuboramiz
-        const userTgId = currentUser.telegram_id || currentUser.tg_id;
-        console.log("Qidiruvga berilayotgan ID:", userTgId); // Konsolda tekshirib ko'ring
-
+        const userTgId = currentUser.tg_id;
         const blacklist = getBlacklist();
         socket.emit('find_match', { tg_id: userTgId, blacklist });
     };
