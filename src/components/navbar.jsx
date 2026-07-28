@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { PlanBadge } from './PlanBadge';
 import { useUser } from '../context/UserContext';
 
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
+
 const headerStyle = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
 const avatarStyle = {
   width: 38,
@@ -12,15 +14,17 @@ const avatarStyle = {
 
 export function Navbar() {
   const { user } = useUser();
-  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar);
+  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
 
   // User ma'lumoti localStorage dan yoki serverdan kelganda avatar URL ni yangilaymiz
   useEffect(() => {
-    setCurrentAvatar(user.avatar);
-  }, [user.avatar]);
+    if (user?.avatar) {
+      setCurrentAvatar(user.avatar);
+    }
+  }, [user?.avatar]);
 
   const handleImgError = () => {
-    setCurrentAvatar(user.avatar);
+    setCurrentAvatar(DEFAULT_AVATAR);
   };
 
   if (!user) {

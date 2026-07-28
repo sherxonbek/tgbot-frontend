@@ -3,7 +3,7 @@ import { BackIcon, ChevronRight, StarIcon, SupportIcon } from '../assets/icon';
 import { PlanBadge } from '../components/PlanBadge';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useUser } from '../context/UserContext';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
 
@@ -79,7 +79,7 @@ export function SettingsRow({ icon, label, sub, accent, onClick }) {
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const user = useCurrentUser();
+  const { user } = useUser();
   const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
 
   useEffect(() => {
