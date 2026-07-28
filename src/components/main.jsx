@@ -59,7 +59,7 @@ export function Main() {
 
             <div className="text-center" style={{ maxWidth: 240 }}>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
-                    {isSearching ? 'Faol foydalanuvchi qidirilmoqda...' : `Salom, ${currentUser?.name || 'Foydalanuvchi'}! Qidirishni boshlang`}
+                    {isSearching ? 'Faol foydalanuvchi qidirilmoqda...' : 'Suhbatni boshlash uchun bosing'}
                 </p>
             </div>
 

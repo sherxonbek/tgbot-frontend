@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { SkipIcon, FlagIcon, SendIcon, ImageIcon, CheckIcon } from '../assets/icon';
+import { SkipIcon, FlagIcon, SendIcon } from '../assets/icon';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
@@ -45,11 +45,9 @@ export function ChatPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const typingTimerRef = useRef(null);
   const bottomRef = useRef(null);
-  const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -204,58 +202,6 @@ export function ChatPage() {
     }, 1000);
   };
 
-  // Image upload handler
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser || !matchUser) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Faqat rasm fayllari yuklash mumkin');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Rasm hajmi 5MB dan oshmasligi kerak');
-      return;
-    }
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/upload/image`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message);
-
-      const newMessage = {
-        id: Date.now(),
-        text: '',
-        type: 'image',
-        mediaUrl: `${API_BASE}${data.mediaUrl}`,
-        from: 'me',
-        senderTgId: currentUser.tg_id,
-        recipientTgId: matchUser.tg_id,
-        read: false,
-        time: now(),
-      };
-
-      setMessages((prev) => [...prev, newMessage]);
-      socket.emit('send_message', { ...newMessage, tempId: newMessage.id });
-    } catch (error) {
-      console.error('Rasm yuklash xatosi:', error);
-      alert('Rasm yuklanmadi. Qayta urinib ko\'ring.');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
-
   const handleReport = async (reason) => {
     setReportOpen(false);
 
@@ -340,25 +286,6 @@ export function ChatPage() {
 
         <div className="flex-1" />
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
-          style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80', cursor: 'pointer', opacity: uploading ? 0.5 : 1 }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.2)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.1)'; }}
-        >
-          <ImageIcon />
-          {uploading ? 'Yuklanmoqda...' : 'Rasm'}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          style={{ display: 'none' }}
-        />
-
         <div className="relative">
           <button
             onClick={() => setReportOpen((value) => !value)}
@@ -406,7 +333,7 @@ export function ChatPage() {
               </svg>
             </div>
             <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Suhbatni boshlang. ({matchUser?.name || matchUser?.username || 'Suhbatdosh'} bilan)
+              Suhbatni boshlang. (Suhbatdosh bilan)
             </p>
           </div>
         ) : (
@@ -427,7 +354,7 @@ export function ChatPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-400" style={{ animation: 'bounce 1s ease-in-out infinite', animationDelay: '300ms' }} />
                 </span>
                 <span className="text-xs" style={{ color: 'rgba(167,139,250,0.7)' }}>
-                  {matchUser?.name || 'Suhbatdosh'} yozmoqda...
+                  Suhbatdosh yozmoqda...
                 </span>
               </div>
             )}
