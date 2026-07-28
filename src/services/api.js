@@ -144,6 +144,108 @@ export async function uploadImage(file) {
   }
 }
 
+// ─── Admin API ─────────────────────────────────────────────────────────────
+
+export async function fetchAdminStats() {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/admin/stats`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Statistikani olishda xatolik');
+  return response.json();
+}
+
+export async function fetchAdminUsers({ search, plan, gender, region, page } = {}) {
+  const initData = getTelegramInitData();
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (plan) params.set('plan', plan);
+  if (gender) params.set('gender', gender);
+  if (region) params.set('region', region);
+  if (page) params.set('page', page);
+
+  const response = await fetch(`${API_BASE}/api/admin/users?${params}`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Foydalanuvchilarni olishda xatolik');
+  return response.json();
+}
+
+export async function updateUserPlan(tgId, plan) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/admin/users/${tgId}/plan`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+    credentials: 'include',
+    body: JSON.stringify({ plan }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Planni o\'zgartirishda xatolik');
+  }
+  return response.json();
+}
+
+export async function deleteUser(tgId) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/admin/users/${tgId}`, {
+    method: 'DELETE',
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Foydalanuvchini o\'chirishda xatolik');
+  }
+  return response.json();
+}
+
+export async function fetchAdminReports({ status, page } = {}) {
+  const initData = getTelegramInitData();
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (page) params.set('page', page);
+
+  const response = await fetch(`${API_BASE}/api/admin/reports?${params}`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Shikoyatlarni olishda xatolik');
+  return response.json();
+}
+
+export async function reviewReport(reportId, data) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/reports/admin/${reportId}/review`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Shikoyatni ko\'rib chiqishda xatolik');
+  }
+  return response.json();
+}
+
+export async function sendBroadcast(message, filter = {}) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/admin/broadcast`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+    credentials: 'include',
+    body: JSON.stringify({ message, filter }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Broadcast yuborishda xatolik');
+  }
+  return response.json();
+}
+
 export async function updateUserStatus(tgId, status) {
   try {
     const initData = getTelegramInitData();

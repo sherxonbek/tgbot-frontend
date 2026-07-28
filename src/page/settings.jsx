@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
-import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon } from '../assets/icon';
+import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon, SettingsIcon } from '../assets/icon';
 import { PlanBadge } from '../components/PlanBadge';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +42,13 @@ const settingsRows = [
     sub: "Xatoliklar, takliflar yoki yordam uchun murojaat qiling",
   },
 ];
+
+const adminRow = {
+  icon: <SettingsIcon />,
+  label: "Admin Panel",
+  sub: "Foydalanuvchilar, shikoyatlar va statistika",
+  accent: false,
+};
 
 function CameraIcon() {
   return (
@@ -600,14 +607,29 @@ export function SettingsPage() {
 
       {/* Settings rows - only show when not editing */}
       {!isEditing && (
-        <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
-          {settingsRows.map((row, index) => (
-            <Fragment key={row.label}>
-              {index > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />}
-              <SettingsRow icon={row.icon} label={row.label} sub={row.sub} accent={row.accent} onClick={() => {}} />
-            </Fragment>
-          ))}
-        </div>
+        <>
+          {/* Admin panel row (only for admin) */}
+          {user?.plan === 'Admin' && (
+            <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+              <SettingsRow
+                icon={adminRow.icon}
+                label={adminRow.label}
+                sub={adminRow.sub}
+                accent={adminRow.accent}
+                onClick={() => navigate('/admin')}
+              />
+            </div>
+          )}
+
+          <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+            {settingsRows.map((row, index) => (
+              <Fragment key={row.label}>
+                {index > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 16px' }} />}
+                <SettingsRow icon={row.icon} label={row.label} sub={row.sub} accent={row.accent} onClick={() => {}} />
+              </Fragment>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="mt-auto pb-8 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import HomePage from './page/home';
 import { SettingsPage } from './page/settings';
 import { ChatPage } from './page/chatPage';
+import { AdminPage } from './page/admin';
 import { useUser } from './context/UserContext';
 
 export default function App() {
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </BrowserRouter>
   );
