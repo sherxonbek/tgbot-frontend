@@ -88,6 +88,14 @@ export async function fetchCurrentUser() {
   }
 }
 
+// Nisbiy URL'larni to'liq URL ga aylantirish (frontend != backend domain)
+export function resolveAvatarUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return `${API_BASE}${url}`;
+  return url;
+}
+
 export async function updateUserProfile(tgId, data) {
   try {
     const initData = getTelegramInitData();

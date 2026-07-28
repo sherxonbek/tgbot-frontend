@@ -4,7 +4,7 @@ import { PlanBadge } from '../components/PlanBadge';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { updateUserProfile, uploadImage } from '../services/api';
+import { updateUserProfile, uploadImage, resolveAvatarUrl } from '../services/api';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
 
@@ -124,7 +124,7 @@ export function SettingsPage() {
   const { user, refreshUser } = useUser();
   const fileInputRef = useRef(null);
 
-  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+  const [currentAvatar, setCurrentAvatar] = useState(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
   const [name, setName] = useState(user?.name || '');
   const [region, setRegion] = useState(user?.region || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -137,7 +137,7 @@ export function SettingsPage() {
   const [changedFields, setChangedFields] = useState({});
 
   useEffect(() => {
-    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+    setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
     setName(user?.name || '');
     setRegion(user?.region || '');
   }, [user?.avatar, user?.name, user?.region]);
@@ -168,11 +168,13 @@ export function SettingsPage() {
     try {
       const result = await uploadImage(file);
       if (result?.mediaUrl) {
-        setChangedFields(prev => ({ ...prev, avatar: result.mediaUrl }));
+        const fullUrl = resolveAvatarUrl(result.mediaUrl);
+        setCurrentAvatar(fullUrl);
+        setChangedFields(prev => ({ ...prev, avatar: fullUrl }));
       }
     } catch (err) {
       setError(err.message || 'Rasm yuklanmadi');
-      setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+      setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
     } finally {
       setUploading(false);
     }
@@ -223,7 +225,7 @@ export function SettingsPage() {
   const handleCancel = () => {
     setName(user?.name || '');
     setRegion(user?.region || '');
-    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
+    setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
     setChangedFields({});
     setError('');
     setIsEditing(false);
