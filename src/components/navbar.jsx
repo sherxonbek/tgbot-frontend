@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { PlanBadge } from './PlanBadge';
 import { useUser } from '../context/UserContext';
 
-const DEFAULT_AVATAR = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT790pvuDkByWrXxTt_Tv0lZuEdYSkrf-8Z-rDs9BJK2w&s';
-
 const headerStyle = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
 const avatarStyle = {
   width: 38,
@@ -14,15 +12,15 @@ const avatarStyle = {
 
 export function Navbar() {
   const { user } = useUser();
-  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+  const [currentAvatar, setCurrentAvatar] = useState(user?.avatar);
 
   // User ma'lumoti localStorage dan yoki serverdan kelganda avatar URL ni yangilaymiz
   useEffect(() => {
-    setCurrentAvatar(user?.avatar || DEFAULT_AVATAR);
-  }, [user?.avatar]);
+    setCurrentAvatar(user.avatar);
+  }, [user.avatar]);
 
   const handleImgError = () => {
-    setCurrentAvatar(DEFAULT_AVATAR);
+    setCurrentAvatar(user.avatar);
   };
 
   if (!user) {
