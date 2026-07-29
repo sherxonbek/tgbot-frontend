@@ -32,6 +32,7 @@ export function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const pollRef = useRef(null);
 
+  
   // User ma'lumoti localStorage dan yoki serverdan kelganda avatar URL ni yangilaymiz
   useEffect(() => {
     if (user?.avatar) {
