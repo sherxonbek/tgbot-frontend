@@ -689,7 +689,7 @@ function VIPAdvancedFilters({ user, tgId, refreshUser }) {
   };
 
   return (
-    <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="mx-4 mt-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, overflow: 'visible' }}>
       {/* Header */}
       <div className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="flex items-center gap-2">

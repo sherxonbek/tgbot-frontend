@@ -7,23 +7,32 @@ const getTelegramInitData = () => {
 };
 
 export const getTelegramId = () => {
+  // 1. Telegram WebApp initDataUnsafe dan olish (mobile & desktop)
   const unsafeUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
   if (unsafeUserId) {
     return unsafeUserId.toString();
   }
 
-  return new URLSearchParams(window.location.search).get('tg_id');
+  // 2. URL query param dan olish (fallback)
+  const urlTgId = new URLSearchParams(window.location.search).get('tg_id');
+  if (urlTgId) return urlTgId;
+
+  // 3. Hash dan olish (#tg_id=...)
+  const hashMatch = window.location.hash.match(/[?#&]tg_id=([^&]+)/);
+  if (hashMatch) return hashMatch[1];
+
+  return null;
 };
 
-const resolveTelegramId = async (attempts = 15, intervalMs = 120) => {
+
+const resolveInitData = async (attempts = 25, intervalMs = 200) => {
   for (let i = 0; i < attempts; i += 1) {
-    const tgId = getTelegramId();
-    if (tgId) {
-      return tgId;
+    const initData = getTelegramInitData();
+    if (initData) {
+      return initData;
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
-
   return null;
 };
 
@@ -49,7 +58,8 @@ export async function pingServer() {
  * Must be called before any other API calls.
  */
 export async function authenticateWithTelegram() {
-  const initData = getTelegramInitData();
+  // Desktop Telegram WebApp da initData kechikib kelishi mumkin → retry
+  const initData = await resolveInitData();
 
   if (!initData) {
     console.error('Telegram initData topilmadi. Ilovani Telegram WebApp ichida oching.');
@@ -79,7 +89,7 @@ export async function authenticateWithTelegram() {
 }
 
 export async function fetchCurrentUser() {
-  const initData = getTelegramInitData();
+  const initData = await resolveInitData();
 
   if (!initData) {
     console.error('Telegram initData topilmadi. Ilovani Telegram WebApp ichida oching.');
