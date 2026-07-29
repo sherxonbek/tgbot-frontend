@@ -3,6 +3,7 @@ import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon, Se
 import { Users } from 'lucide-react';
 import { PlanBadge } from '../components/PlanBadge';
 import { UserAvatar } from '../components/Avatar';
+import { VIPOnlineUsers } from '../components/VIPOnlineUsers';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -622,6 +623,11 @@ export function SettingsPage() {
                 onClick={() => navigate('/chat-history')}
               />
             </div>
+          )}
+
+          {/* VIP: Online Users (to'g'ridan-to'g'ri suhbat) */}
+          {user?.plan === 'VIP' && (
+            <VIPOnlineUsers currentUser={user} />
           )}
 
           {/* VIP: Kengaytirilgan filtrlash */}

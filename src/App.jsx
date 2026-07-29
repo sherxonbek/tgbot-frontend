@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import HomePage from './page/home';
 import { SettingsPage } from './page/settings';
 import { ChatPage } from './page/chatPage';
@@ -8,6 +8,31 @@ import NotificationsPage from './page/notifications';
 import { ChatHistoryPage } from './page/chatHistory';
 import { useUser } from './context/UserContext';
 import { ScannerHeart } from './components/ScannerHeart';
+import { socket } from './services/socket';
+import { savePartnerToLocalStorage } from './utils/blacklist';
+
+// Global matched event listener (direct chat uchun)
+function GlobalMatchListener() {
+  const navigate = useNavigate();
+  const navigatedRef = useRef(false);
+
+  useEffect(() => {
+    const handleMatched = (data) => {
+      // /chat page'ida bo'lmasa navigatsiya qilamiz
+      if (window.location.pathname !== '/chat' && data?.partner?.tg_id) {
+        navigatedRef.current = true;
+        savePartnerToLocalStorage(data.partner.tg_id);
+        sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+        navigate('/chat');
+      }
+    };
+
+    socket.on('matched', handleMatched);
+    return () => socket.off('matched', handleMatched);
+  }, [navigate]);
+
+  return null;
+}
 
 export default function App() {
   useEffect(() => {
@@ -50,6 +75,8 @@ export default function App() {
   // 4. Hamma ma'lumot to'liq — UI chizamiz
   return (
     <BrowserRouter>
+      {/* Global matched listener (direct chat request accept uchun) */}
+      {socket.connected && <GlobalMatchListener />}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/settings" element={<SettingsPage />} />
