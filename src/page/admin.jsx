@@ -1,9 +1,9 @@
 import { Fragment, useState, useEffect, useCallback } from 'react';
 import { BackIcon, ChevronRight, CheckIcon } from '../assets/icon';
 import { IconButton } from '../components/IconButton';
+import { UserAvatar } from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { resolveAvatarUrl } from '../services/api';
 import {
   fetchAdminStats,
   fetchAdminUsers,
@@ -14,7 +14,7 @@ import {
   sendBroadcast,
 } from '../services/api';
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
+
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -227,12 +227,11 @@ function AdminUsers() {
               className="rounded-2xl p-3 flex items-center gap-3"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
-              <img
-                src={resolveAvatarUrl(u.avatar) || DEFAULT_AVATAR}
-                alt={u.name}
-                className="rounded-full object-cover flex-shrink-0"
-                style={{ width: 38, height: 38, border: '2px solid rgba(124,90,240,0.4)' }}
-                onError={e => { e.target.src = DEFAULT_AVATAR; }}
+              <UserAvatar
+                name={u.name}
+                avatar={u.avatar}
+                size={38}
+                border={false}
               />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate" style={{ color: '#f0effc' }}>{u.name}</div>

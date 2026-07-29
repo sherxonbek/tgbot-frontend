@@ -1,12 +1,11 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon, SettingsIcon } from '../assets/icon';
 import { PlanBadge } from '../components/PlanBadge';
+import { UserAvatar } from '../components/Avatar';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { updateUserProfile, uploadImage, resolveAvatarUrl } from '../services/api';
-
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
 
 const REGIONS = [
   "Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro",
@@ -131,7 +130,7 @@ export function SettingsPage() {
   const { user, refreshUser } = useUser();
   const fileInputRef = useRef(null);
 
-  const [currentAvatar, setCurrentAvatar] = useState(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
+  const [currentAvatar, setCurrentAvatar] = useState(resolveAvatarUrl(user?.avatar));
   const [name, setName] = useState(user?.name || '');
   const [region, setRegion] = useState(user?.region || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -144,14 +143,10 @@ export function SettingsPage() {
   const [changedFields, setChangedFields] = useState({});
 
   useEffect(() => {
-    setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
+    setCurrentAvatar(resolveAvatarUrl(user?.avatar));
     setName(user?.name || '');
     setRegion(user?.region || '');
   }, [user?.avatar, user?.name, user?.region]);
-
-  const handleImgError = () => {
-    setCurrentAvatar(DEFAULT_AVATAR);
-  };
 
   // Avatar tanlash
   const handleAvatarClick = () => {
@@ -181,7 +176,7 @@ export function SettingsPage() {
       }
     } catch (err) {
       setError(err.message || 'Rasm yuklanmadi');
-      setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
+      setCurrentAvatar(resolveAvatarUrl(user?.avatar));
     } finally {
       setUploading(false);
     }
@@ -231,15 +226,14 @@ export function SettingsPage() {
   // Bekor qilish
   const handleCancel = () => {
     setName(user?.name || '');
-    setRegion(user?.region || '');
-    setCurrentAvatar(resolveAvatarUrl(user?.avatar) || DEFAULT_AVATAR);
-    setChangedFields({});
-    setError('');
-    setIsEditing(false);
-    setShowRegionPicker(false);
-  };
+    setRegion(user?.region || '');      setCurrentAvatar(resolveAvatarUrl(user?.avatar));
+      setChangedFields({});
+      setError('');
+      setIsEditing(false);
+      setShowRegionPicker(false);
+    };
 
-  const inputStyle = {
+    const inputStyle = {
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.1)',
     color: '#f0effc',
@@ -337,23 +331,31 @@ export function SettingsPage() {
             style={{ cursor: isEditing ? 'pointer' : 'default' }}
             onClick={isEditing ? handleAvatarClick : undefined}
           >
-            <img
-              src={currentAvatar}
-              alt={user?.name}
-              key={currentAvatar}
-              onError={handleImgError}
-              className="rounded-full object-cover transition-all duration-300"
-              style={{
-                width: isEditing ? 88 : 76,
-                height: isEditing ? 88 : 76,
-                border: '2.5px solid rgba(124,90,240,0.65)',
-                boxShadow: avatarHover
-                  ? '0 0 30px rgba(124,90,240,0.5)'
-                  : '0 0 20px rgba(124,90,240,0.35)',
-                filter: uploading ? 'brightness(0.6)' : 'none',
-                transition: 'all 0.3s ease',
-              }}
-            />
+            {currentAvatar ? (
+              <img
+                src={currentAvatar}
+                alt={user?.name}
+                key={currentAvatar}
+                className="rounded-full object-cover transition-all duration-300"
+                style={{
+                  width: isEditing ? 88 : 76,
+                  height: isEditing ? 88 : 76,
+                  border: '2.5px solid rgba(124,90,240,0.65)',
+                  boxShadow: avatarHover
+                    ? '0 0 30px rgba(124,90,240,0.5)'
+                    : '0 0 20px rgba(124,90,240,0.35)',
+                  filter: uploading ? 'brightness(0.6)' : 'none',
+                  transition: 'all 0.3s ease',
+                }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            ) : (
+              <UserAvatar
+                name={user?.name}
+                avatar={user?.avatar}
+                size={isEditing ? 88 : 76}
+              />
+            )}
 
             {/* Upload overlay */}
             {isEditing && (
