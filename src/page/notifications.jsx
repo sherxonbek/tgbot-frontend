@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import { fetchNotifications, markNotificationsRead } from '../services/api';
+import { fetchNotifications, markNotificationsRead, markNotificationRead } from '../services/api';
 import { BackIcon, CheckIcon, AnimatedLoader, BellIcon } from '../assets/icon';
 
 const NOTIF_ICONS = {
   broadcast: '📢',
   system: '🔔',
   warning: '⚠️',
+};
+
+const NOTIF_TITLES = {
+  broadcast: 'Xabar',
+  system: 'Bildirishnoma',
+  warning: 'Ogohlantirish',
 };
 
 function getTimeAgo(dateString) {
@@ -36,24 +41,61 @@ function getDateGroup(dateString) {
   return 'Eski';
 }
 
-// ─── Notification Card ─────────────────────────────────────────────────────
-function NotificationCard({ notification, index, style }) {
+// ─── Notification Card (with truncation + mark-read on click) ─────────────
+function NotificationCard({ notification, index, onReadStatusChange }) {
   const [isVisible, setIsVisible] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [isRead, setIsRead] = useState(notification.read);
+  const [markedJustNow, setMarkedJustNow] = useState(false);
+  const MAX_LINES = 3;
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), index * 50);
     return () => clearTimeout(timer);
   }, [index]);
 
+  // Parentdan notification.read o'zgarganda sync qilish (Hammasini o'qish bosilganda)
+  useEffect(() => {
+    if (notification.read && !isRead && !markedJustNow) {
+      setIsRead(true);
+    }
+  }, [notification.read, isRead, markedJustNow]);
+
+  const handleClick = async () => {
+    // Agar yozuv to'liq ko'rinmayotgan bo'lsa, expand qilamiz
+    if (!expanded) {
+      setExpanded(true);
+    }
+
+    // O'qilmagan bo'lsa, o'qilgan deb belgilaymiz
+    if (!isRead) {
+      setIsRead(true);
+      setMarkedJustNow(true);
+      setTimeout(() => setMarkedJustNow(false), 1500);
+
+      try {
+        await markNotificationRead(notification._id);
+        if (onReadStatusChange) onReadStatusChange();
+      } catch (e) {
+        // Xatolik bo'lsa local state'ni qaytarib olamiz
+        console.error('Mark read error:', e);
+      }
+    }
+  };
+
+  // Title — broadcast type bo'lsa "Xabar" deb chiqaramiz
+  const displayTitle = NOTIF_TITLES[notification.type] || notification.title || 'Xabar';
+
   return (
     <div
-      className="rounded-2xl transition-all duration-300"
+      className="rounded-2xl transition-all duration-300 cursor-pointer"
+      onClick={handleClick}
       style={{
-        background: notification.read
+        background: isRead
           ? 'rgba(255,255,255,0.02)'
           : 'linear-gradient(135deg, rgba(124,90,240,0.08) 0%, rgba(124,90,240,0.02) 100%)',
         border: `1px solid ${
-          notification.read
+          isRead
             ? 'rgba(255,255,255,0.05)'
             : 'rgba(124,90,240,0.15)'
         }`,
@@ -61,7 +103,6 @@ function NotificationCard({ notification, index, style }) {
         transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
         transition: 'all 0.35s ease',
         transitionDelay: `${index * 50}ms`,
-        ...style,
       }}
     >
       <div className="flex items-start gap-3 p-3.5">
@@ -71,7 +112,7 @@ function NotificationCard({ notification, index, style }) {
           style={{
             width: 40,
             height: 40,
-            background: notification.read
+            background: isRead
               ? 'rgba(255,255,255,0.04)'
               : 'rgba(124,90,240,0.12)',
             fontSize: 18,
@@ -85,16 +126,12 @@ function NotificationCard({ notification, index, style }) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <span
-                className="text-sm font-semibold truncate"
-                style={{
-                  color: notification.read
-                    ? 'rgba(255,255,255,0.7)'
-                    : '#f0effc',
-                }}
+                className="text-sm font-semibold truncate flex items-center gap-1.5"
+                style={{ color: isRead ? 'rgba(255,255,255,0.7)' : '#f0effc' }}
               >
-                {notification.title}
+                {displayTitle}
               </span>
-              {!notification.read && (
+              {!isRead && (
                 <span
                   className="flex-shrink-0 rounded-full animate-pulse-glow"
                   style={{
@@ -114,28 +151,65 @@ function NotificationCard({ notification, index, style }) {
             </span>
           </div>
 
-          <div
-            className="text-xs mt-1.5 leading-relaxed"
-            style={{
-              color: notification.read
-                ? 'rgba(255,255,255,0.4)'
-                : 'rgba(255,255,255,0.6)',
-              wordBreak: 'break-word',
-            }}
-          >
-            {notification.message}
+          {/* Message — truncated to MAX_LINES, expand on click */}
+          <div className="relative mt-1.5">
+            <div
+              className={`text-xs leading-relaxed transition-all duration-300 ${
+                expanded ? '' : 'overflow-hidden'
+              }`}
+              style={{
+                color: isRead ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.6)',
+                wordBreak: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: expanded ? 'none' : MAX_LINES,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {notification.message}
+            </div>
+            {!expanded && notification.message && notification.message.length > 80 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                className="text-xs mt-0.5 font-medium transition-all"
+                style={{ color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                Ko'proq ko'rish
+              </button>
+            )}
           </div>
 
-          <div
-            className="text-2xs mt-2"
-            style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}
-          >
-            {new Date(notification.createdAt).toLocaleString('uz-UZ', {
-              day: 'numeric',
-              month: 'long',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+          {/* Footer: date + read confirmation */}
+          <div className="flex items-center justify-between mt-2">
+            <span
+              className="text-2xs"
+              style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}
+            >
+              {new Date(notification.createdAt).toLocaleString('uz-UZ', {
+                day: 'numeric',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+
+            {/* Read confirmation */}
+            {markedJustNow && (
+              <span
+                className="text-2xs flex items-center gap-0.5 animate-fade-in-up"
+                style={{ color: '#6ee7b7', fontSize: 10 }}
+              >
+                <CheckIcon size={10} />
+                O'qildi
+              </span>
+            )}
+            {isRead && !markedJustNow && (
+              <span
+                className="text-2xs"
+                style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}
+              >
+                ✓ O'qilgan
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -218,7 +292,6 @@ function LoadingSkeleton() {
 // ─── Notifications Page ────────────────────────────────────────────────────
 export function NotificationsPage() {
   const navigate = useNavigate();
-  const { user } = useUser();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -308,15 +381,13 @@ export function NotificationsPage() {
           aria-label="Go back"
         >
           <BackIcon />
-        </button>
-
-        <div className="flex-1">
+        </button>          <div className="flex-1">
           <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
             Bildirishnomalar
           </span>
           {unreadCount > 0 && (
             <span className="ml-1.5 text-xs font-medium" style={{ color: '#a78bfa' }}>
-              ({unreadCount} ta o'qilmagan)
+              ({unreadCount})
             </span>
           )}
         </div>
@@ -422,43 +493,6 @@ export function NotificationsPage() {
         )}
       </div>
 
-      {/* ── Bottom tab bar ─────────────────────────────────────────── */}
-      {user && (
-        <div
-          className="flex-shrink-0 flex items-center justify-around px-6 py-3"
-          style={{
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            background: 'rgba(10,10,18,0.95)',
-            backdropFilter: 'blur(16px)',
-            paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
-          }}
-        >
-          {[
-            { icon: '🏠', label: 'Bosh sahifa', path: '/' },
-            { icon: '💬', label: 'Chat', path: '/chat' },
-            { icon: '🔔', label: 'Bildirishnomalar', path: '/notifications', active: true },
-            { icon: '⚙️', label: 'Sozlamalar', path: '/settings' },
-          ].map((tab) => (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className="flex flex-col items-center gap-1 transition-all"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                opacity: tab.active ? 1 : 0.4,
-                transform: tab.active ? 'scale(1.05)' : 'scale(1)',
-              }}
-            >
-              <span style={{ fontSize: 20 }}>{tab.icon}</span>
-              <span className="text-2xs" style={{ color: tab.active ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontSize: 9 }}>
-                {tab.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

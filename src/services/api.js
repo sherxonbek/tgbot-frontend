@@ -302,6 +302,17 @@ export async function markNotificationsRead() {
   return response.json();
 }
 
+export async function markNotificationRead(id) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+    method: 'PATCH',
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Bildirishnomani o\'qilgan deb belgilashda xatolik');
+  return response.json();
+}
+
 export async function fetchUnreadCount() {
   const initData = getTelegramInitData();
   const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
