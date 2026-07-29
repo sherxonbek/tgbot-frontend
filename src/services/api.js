@@ -3,7 +3,21 @@ const API_URL = `${API_BASE}/api/users`;
 const AUTH_URL = `${API_BASE}/api/auth/telegram`;
 
 const getTelegramInitData = () => {
-  return window.Telegram?.WebApp?.initData || '';
+  // 1. Telegram WebApp (mobile & desktop embedded browser)
+  if (window.Telegram?.WebApp?.initData) {
+    return window.Telegram.WebApp.initData;
+  }
+
+  // 2. URL query param: tgWebAppData (desktop external browser)
+  const urlParams = new URLSearchParams(window.location.search);
+  const tgWebAppData = urlParams.get('tgWebAppData');
+  if (tgWebAppData) return tgWebAppData;
+
+  // 3. Hash fragment dan olish (#tgWebAppData=...)
+  const hashMatch = window.location.hash.match(/[?#&]tgWebAppData=([^&]+)/);
+  if (hashMatch) return decodeURIComponent(hashMatch[1]);
+
+  return '';
 };
 
 export const getTelegramId = () => {
