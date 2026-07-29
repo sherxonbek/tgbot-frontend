@@ -1,13 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageCircle, X, Check, UserPlus } from 'lucide-react';
 import { UserAvatar } from './Avatar';
 import { useChatRequests } from '../hooks/useChatRequests';
+import { socket } from '../services/socket';
+import { savePartnerToLocalStorage } from '../utils/blacklist';
 
 /**
  * ChatRequestPanel — Kutilayotgan so'rovlar paneli
  * Navbarda ko'rinadi, hamma userlar (VIP va Free) so'rovlarni qabul qilishi mumkin
  */
 export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
+  const navigate = useNavigate();
   const {
     pendingRequests,
     loading,
@@ -34,7 +38,6 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
       }
     };
 
-    // Mikro-task orqali qo'shamiz (hozirgi click event dan keyin)
     requestAnimationFrame(() => {
       document.addEventListener('click', handleClickOutside);
     });
@@ -44,6 +47,21 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
     };
   }, [isOpen, onClose]);
 
+  // Accept bosilganda chatga o'tish
+  const handleAccept = useCallback((req) => {
+    respondToRequest(req.fromTgId, 'accepted');
+    onClose();
+    // Backend 'matched' event yuborganida GlobalMatchListener navigatsiya qiladi
+    // Lekin tezroq bo'lishi uchun localda ham navigatsiya qilamiz
+    savePartnerToLocalStorage(req.fromTgId);
+    sessionStorage.setItem('matchUser', JSON.stringify({
+      tg_id: req.fromTgId,
+      name: req.fromName,
+      avatar: req.fromAvatar,
+    }));
+    navigate('/chat');
+  }, [respondToRequest, onClose, navigate]);
+
   if (!isOpen) return null;
 
   return (
@@ -51,7 +69,7 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
       ref={panelRef}
       className="absolute right-0 top-full mt-2 rounded-2xl overflow-hidden z-50 animate-slide-up"
       style={{
-        width: 320,
+        width: 340,
         maxWidth: 'calc(100vw - 32px)',
         background: '#1a1a2e',
         border: '1px solid rgba(255,255,255,0.1)',
@@ -157,7 +175,7 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
-                    onClick={() => respondToRequest(req.fromTgId, 'accepted')}
+                    onClick={() => handleAccept(req)}
                     className="flex items-center justify-center rounded-lg transition-all"
                     style={{
                       width: 34,
@@ -173,7 +191,10 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
                     <Check size={16} />
                   </button>
                   <button
-                    onClick={() => respondToRequest(req.fromTgId, 'declined')}
+                    onClick={() => {
+                      respondToRequest(req.fromTgId, 'declined');
+                      onClose();
+                    }}
                     className="flex items-center justify-center rounded-lg transition-all"
                     style={{
                       width: 34,

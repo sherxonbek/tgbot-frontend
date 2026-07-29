@@ -1,18 +1,23 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchNotifications, markNotificationsRead, markNotificationRead } from '../services/api';
 import { BackIcon, CheckIcon, AnimatedLoader, BellIcon } from '../assets/icon';
+import { Check, X } from 'lucide-react';
+import { socket } from '../services/socket';
+import { savePartnerToLocalStorage } from '../utils/blacklist';
 
 const NOTIF_ICONS = {
   broadcast: '📢',
   system: '🔔',
   warning: '⚠️',
+  chat_request: '💬',
 };
 
 const NOTIF_TITLES = {
   broadcast: 'Xabar',
   system: 'Bildirishnoma',
   warning: 'Ogohlantirish',
+  chat_request: 'Suhbat so\'rovi',
 };
 
 function getTimeAgo(dateString) {
@@ -42,11 +47,12 @@ function getDateGroup(dateString) {
 }
 
 // ─── Notification Card (with truncation + mark-read on click) ─────────────
-function NotificationCard({ notification, index, onReadStatusChange }) {
+function NotificationCard({ notification, index, onReadStatusChange, onRequestAction }) {
   const [isVisible, setIsVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [isRead, setIsRead] = useState(notification.read);
   const [markedJustNow, setMarkedJustNow] = useState(false);
+  const [actionDone, setActionDone] = useState(null); // 'accepted' | 'declined' | null
   const MAX_LINES = 3;
 
   useEffect(() => {
@@ -54,48 +60,82 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
     return () => clearTimeout(timer);
   }, [index]);
 
-  // Parentdan notification.read o'zgarganda sync qilish (Hammasini o'qish bosilganda)
   useEffect(() => {
     if (notification.read && !isRead && !markedJustNow) {
       setIsRead(true);
     }
   }, [notification.read, isRead, markedJustNow]);
 
-  const handleClick = async () => {
-    // Agar yozuv to'liq ko'rinmayotgan bo'lsa, expand qilamiz
-    if (!expanded) {
-      setExpanded(true);
-    }
-
-    // O'qilmagan bo'lsa, o'qilgan deb belgilaymiz
+  const markAsRead = async () => {
     if (!isRead) {
       setIsRead(true);
       setMarkedJustNow(true);
       setTimeout(() => setMarkedJustNow(false), 1500);
-
       try {
         await markNotificationRead(notification._id);
         if (onReadStatusChange) onReadStatusChange();
       } catch (e) {
-        // Xatolik bo'lsa local state'ni qaytarib olamiz
         console.error('Mark read error:', e);
       }
     }
   };
 
-  // Title — broadcast type bo'lsa "Xabar" deb chiqaramiz
+  const handleClick = async () => {
+    if (!expanded) setExpanded(true);
+    await markAsRead();
+  };
+
+  // Chat request action
+  const handleRequestAction = async (action) => {
+    if (actionDone) return;
+    setActionDone(action);
+
+    if (action === 'accepted') {
+      // Socket orqali accept
+      socket.emit('respond_chat_request', {
+        fromTgId: notification.metadata?.fromTgId,
+        action: 'accepted',
+      });
+      // Chatga navigatsiya
+      const meta = notification.metadata;
+      if (meta?.fromTgId) {
+        savePartnerToLocalStorage(meta.fromTgId);
+        sessionStorage.setItem('matchUser', JSON.stringify({
+          tg_id: meta.fromTgId,
+          name: meta.fromName,
+          avatar: meta.fromAvatar,
+        }));
+      }
+    } else {
+      socket.emit('respond_chat_request', {
+        fromTgId: notification.metadata?.fromTgId,
+        action: 'declined',
+      });
+    }
+
+    await markAsRead();
+
+    if (action === 'accepted') {
+      // Suhbatga o'tish
+      setTimeout(() => {
+        window.location.href = '/chat';
+      }, 300);
+    }
+  };
+
   const displayTitle = NOTIF_TITLES[notification.type] || notification.title || 'Xabar';
+  const isChatRequest = notification.type === 'chat_request';
 
   return (
     <div
-      className="rounded-2xl transition-all duration-300 cursor-pointer"
-      onClick={handleClick}
+      className={`rounded-2xl transition-all duration-300 ${isChatRequest ? '' : 'cursor-pointer'}`}
+      onClick={isChatRequest ? undefined : handleClick}
       style={{
-        background: isRead
+        background: isRead && !actionDone
           ? 'rgba(255,255,255,0.02)'
           : 'linear-gradient(135deg, rgba(124,90,240,0.08) 0%, rgba(124,90,240,0.02) 100%)',
         border: `1px solid ${
-          isRead
+          isRead && !actionDone
             ? 'rgba(255,255,255,0.05)'
             : 'rgba(124,90,240,0.15)'
         }`,
@@ -114,7 +154,9 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
             height: 40,
             background: isRead
               ? 'rgba(255,255,255,0.04)'
-              : 'rgba(124,90,240,0.12)',
+              : isChatRequest
+                ? 'rgba(16,185,129,0.12)'
+                : 'rgba(124,90,240,0.12)',
             fontSize: 18,
           }}
         >
@@ -151,7 +193,7 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
             </span>
           </div>
 
-          {/* Message — truncated to MAX_LINES, expand on click */}
+          {/* Message */}
           <div className="relative mt-1.5">
             <div
               className={`text-xs leading-relaxed transition-all duration-300 ${
@@ -178,35 +220,72 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
             )}
           </div>
 
-          {/* Footer: date + read confirmation */}
-          <div className="flex items-center justify-between mt-2">
-            <span
-              className="text-2xs"
-              style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}
+          {/* Chat request actions */}
+          {isChatRequest && !actionDone && (
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRequestAction('accepted'); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{
+                  background: 'rgba(16,185,129,0.15)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                  color: '#6ee7b7',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; }}
+              >
+                <Check size={14} />
+                Qabul qilish
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRequestAction('declined'); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                  color: '#f87171',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+              >
+                <X size={14} />
+                Rad etish
+              </button>
+            </div>
+          )}
+
+          {/* Action done feedback */}
+          {actionDone === 'accepted' && (
+            <div className="flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: 'rgba(16,185,129,0.1)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.15)' }}
             >
+              ✅ Suhbatga o'tilmoqda...
+            </div>
+          )}
+          {actionDone === 'declined' && (
+            <div className="flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-xl text-xs"
+              style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.12)' }}
+            >
+              ❌ So'rov rad etildi
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-2xs" style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}>
               {new Date(notification.createdAt).toLocaleString('uz-UZ', {
-                day: 'numeric',
-                month: 'long',
-                hour: '2-digit',
-                minute: '2-digit',
+                day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
               })}
             </span>
-
-            {/* Read confirmation */}
             {markedJustNow && (
-              <span
-                className="text-2xs flex items-center gap-0.5 animate-fade-in-up"
-                style={{ color: '#6ee7b7', fontSize: 10 }}
-              >
-                <CheckIcon size={10} />
-                O'qildi
+              <span className="text-2xs flex items-center gap-0.5 animate-fade-in-up" style={{ color: '#6ee7b7', fontSize: 10 }}>
+                <CheckIcon size={10} /> O'qildi
               </span>
             )}
-            {isRead && !markedJustNow && (
-              <span
-                className="text-2xs"
-                style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}
-              >
+            {isRead && !markedJustNow && !actionDone && (
+              <span className="text-2xs" style={{ color: 'rgba(255,255,255,0.15)', fontSize: 10 }}>
                 ✓ O'qilgan
               </span>
             )}
