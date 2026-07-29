@@ -5,6 +5,7 @@ import { SettingsPage } from './page/settings';
 import { ChatPage } from './page/chatPage';
 import { AdminPage } from './page/admin';
 import NotificationsPage from './page/notifications';
+import { RequestsPage } from './page/requests';
 import { ChatHistoryPage } from './page/chatHistory';
 import { useUser } from './context/UserContext';
 import { ScannerHeart } from './components/ScannerHeart';
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/requests" element={<RequestsPage />} />
         <Route path="/chat-history" element={<ChatHistoryPage />} />
       </Routes>
     </BrowserRouter>

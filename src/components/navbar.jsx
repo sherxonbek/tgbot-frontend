@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlanBadge } from './PlanBadge';
 import { UserAvatar } from './Avatar';
-import { ChatRequestPanel } from './ChatRequestPanel';
 import { useUser } from '../context/UserContext';
 import { fetchUnreadCount } from '../services/api';
 import { AnimatedBell } from '../assets/icon';
@@ -29,7 +28,6 @@ export function Navbar() {
   const { user } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
-  const [showRequests, setShowRequests] = useState(false);
   const pollRef = useRef(null);
 
   // O'qilmagan bildirishnomalar sonini olish
@@ -85,10 +83,8 @@ export function Navbar() {
   }, []);
 
   const handleRequestsClick = () => {
-    setShowRequests(!showRequests);
-    if (!showRequests) {
-      setPendingCount(0);
-    }
+    setPendingCount(0);
+    navigate('/requests');
   };
 
   if (!user) {
@@ -121,40 +117,33 @@ export function Navbar() {
 
       <div className="flex items-center gap-2">
         {/* Chat requests icon (hamma userlar uchun) */}
-        <div className="relative">
-          <button
-            onClick={handleRequestsClick}
-            style={iconBtnStyle}
-            className="flex items-center justify-center transition-all"
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-            aria-label="Chat requests"
-          >
-            <UserPlus size={18} style={{ color: showRequests ? '#a78bfa' : 'rgba(255,255,255,0.6)' }} />
-            {pendingCount > 0 && (
-              <span
-                className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-2xs font-bold"
-                style={{
-                  minWidth: 16,
-                  height: 16,
-                  padding: '0 4px',
-                  background: 'linear-gradient(135deg, #a78bfa, #7c5af0)',
-                  color: '#fff',
-                  fontSize: 9,
-                  boxShadow: '0 0 8px rgba(167,139,250,0.5)',
-                  animation: 'bounce 1s ease-in-out infinite',
-                }}
-              >
-                {pendingCount > 99 ? '99+' : pendingCount}
-              </span>
-            )}
-          </button>
-          <ChatRequestPanel
-            currentUser={user}
-            isOpen={showRequests}
-            onClose={() => setShowRequests(false)}
-          />
-        </div>
+        <button
+          onClick={handleRequestsClick}
+          style={iconBtnStyle}
+          className="flex items-center justify-center transition-all"
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          aria-label="Chat requests"
+        >
+          <UserPlus size={18} style={{ color: 'rgba(255,255,255,0.6)' }} />
+          {pendingCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-2xs font-bold"
+              style={{
+                minWidth: 16,
+                height: 16,
+                padding: '0 4px',
+                background: 'linear-gradient(135deg, #a78bfa, #7c5af0)',
+                color: '#fff',
+                fontSize: 9,
+                boxShadow: '0 0 8px rgba(167,139,250,0.5)',
+                animation: 'bounce 1s ease-in-out infinite',
+              }}
+            >
+              {pendingCount > 99 ? '99+' : pendingCount}
+            </span>
+          )}
+        </button>
 
         {/* Notification bell */}
         <button
