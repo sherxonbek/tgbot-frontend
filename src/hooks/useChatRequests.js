@@ -51,7 +51,6 @@ export function useChatRequests(currentUser) {
     handlers.forEach(([event, handler]) => {
       socket.on(event, handler);
     });
-    handlersRef.current = handlers;
 
     // Initial load
     loadPendingRequests();
