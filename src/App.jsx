@@ -4,6 +4,7 @@ import HomePage from './page/home';
 import { SettingsPage } from './page/settings';
 import { ChatPage } from './page/chatPage';
 import { AdminPage } from './page/admin';
+import NotificationsPage from './page/notifications';
 import { useUser } from './context/UserContext';
 import { AnimatedLoader, HeartIcon } from './assets/icon';
 
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Routes>
     </BrowserRouter>
   );
