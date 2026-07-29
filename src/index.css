@@ -72,6 +72,49 @@ html, body, #root {
   to   { opacity: 0; transform: translateX(-32px); }
 }
 
+/* ─── Animated Icon Keyframes ─────────────────────────────────────────── */
+
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(15deg); }
+  20%, 40% { transform: rotate(-15deg); }
+  50%      { transform: rotate(0deg); }
+}
+
+@keyframes send-fly {
+  0%   { transform: translateX(0) scale(1); }
+  50%  { transform: translateX(4px) scale(1.1); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(124,90,240,0.4); }
+  50%      { box-shadow: 0 0 20px rgba(124,90,240,0.8); }
+}
+
+.animate-bell-ring {
+  animation: bell-ring 1.2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.animate-send-fly {
+  animation: send-fly 0.4s ease-in-out;
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
 .ring-1 { animation: scanner-ring 3s ease-out infinite; }
 .ring-2 { animation: scanner-ring 3s ease-out infinite 0.75s; }
 .ring-3 { animation: scanner-ring 3s ease-out infinite 1.5s; }

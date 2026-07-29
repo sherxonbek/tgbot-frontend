@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { SkipIcon, FlagIcon, SendIcon } from '../assets/icon';
+import { SkipIcon, FlagIcon, SendIcon, AnimatedSend } from '../assets/icon';
+import { MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
@@ -328,9 +329,7 @@ export function ChatPage() {
         {messages.length === 0 && !partnerTyping ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.7)" strokeWidth="1.6" width="26" height="26">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              <MessageCircle size={26} style={{ color: 'rgba(167,139,250,0.7)' }} />
             </div>
             <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
               Suhbatni boshlang. (Suhbatdosh bilan)
@@ -405,7 +404,7 @@ export function ChatPage() {
           }}
           aria-label="Send message"
         >
-          <SendIcon />
+          <AnimatedSend size={20} flying={sending} />
         </button>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlanBadge } from './PlanBadge';
 import { useUser } from '../context/UserContext';
 import { resolveAvatarUrl, fetchNotifications, fetchUnreadCount, markNotificationsRead } from '../services/api';
-import { BellIcon, CheckIcon } from '../assets/icon';
+import { CheckIcon, AnimatedBell } from '../assets/icon';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop';
 
@@ -255,7 +255,7 @@ export function Navbar() {
             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
             aria-label="Notifications"
           >
-            <BellIcon />
+            <AnimatedBell size={20} ring={unreadCount > 0} />
             {unreadCount > 0 && (
               <span
                 className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-2xs font-bold"

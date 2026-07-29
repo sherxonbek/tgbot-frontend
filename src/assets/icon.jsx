@@ -1,105 +1,184 @@
-export function SettingsIcon() {
+// ─── Lucide-React Icons ─────────────────────────────────────────────────────
+// Barcha iconlar lucide-react dan olingan va animatsiyali variantlari qo'shilgan
+// Eski nomlar bilan moslik uchun aliaslar saqlangan
+
+export {
+  Settings as SettingsIcon,
+  MessageCircle as SupportIcon,
+  Star as StarIcon,
+  ArrowLeft as BackIcon,
+  ChevronRight,
+  Heart as HeartIcon,
+  Send as SendIcon,
+  SkipForward as SkipIcon,
+  Flag as FlagIcon,
+  Image as ImageIcon,
+  Bell as BellIcon,
+  Check as CheckIcon,
+} from 'lucide-react';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ANIMATED ICONS
+// ═════════════════════════════════════════════════════════════════════════════
+
+import { Heart as HeartLucide, Bell as BellLucide, Send as SendLucide, Check as CheckLucide, Loader as LoaderLucide } from 'lucide-react';
+
+// ── Animated Heart (pulse) ─────────────────────────────────────────────────
+export function AnimatedHeart({ size = 52, className = '', ...props }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  )
+    <HeartLucide
+      size={size}
+      className={`heartbeat ${className}`}
+      fill="currentColor"
+      {...props}
+    />
+  );
 }
 
-export function SupportIcon() {
+// ── Animated Bell (ring/shake) ────────────────────────────────────────────
+export function AnimatedBell({ size = 20, className = '', ring = false, ...props }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="18" height="18">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
+    <BellLucide
+      size={size}
+      className={ring ? `animate-bell-ring ${className}` : className}
+      {...props}
+    />
+  );
 }
 
-export function StarIcon() {
+// ── Animated Send (fly/swipe) ────────────────────────────────────────────
+export function AnimatedSend({ size = 20, className = '', flying = false, ...props }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  )
+    <SendLucide
+      size={size}
+      className={flying ? `animate-send-fly ${className}` : className}
+      {...props}
+    />
+  );
 }
 
-
-export function BackIcon() {
+// ── Animated Check (bounce) ──────────────────────────────────────────────
+export function AnimatedCheck({ size = 14, className = '', bounce = false, ...props }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-      <path d="M19 12H5M12 5l-7 7 7 7" />
-    </svg>
-  )
+    <CheckLucide
+      size={size}
+      className={bounce ? `animate-bounce-in ${className}` : className}
+      {...props}
+    />
+  );
 }
 
-
-export function ChevronRight() {
+// ── Animated Loading Spinner ─────────────────────────────────────────────
+export function AnimatedLoader({ size = 20, className = '', ...props }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  )
+    <LoaderLucide
+      size={size}
+      className={`animate-spin ${className}`}
+      {...props}
+    />
+  );
 }
 
-
-export function HeartIcon() {
+// ── Scanner Heart (matching animatsiyasi uchun maxsus) ──────────────────
+export function ScannerHeartIcon({ size = 52 }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width="52" height="52">
-      <path d="M12 21.593c-.525-.444-10.593-8.94-10.593-13.093 0-3.042 2.458-5.5 5.5-5.5 1.82 0 3.422.904 4.395 2.287A5.493 5.493 0 0 1 16.593 3c3.042 0 5.5 2.458 5.5 5.5 0 4.153-10.068 12.649-10.593 13.093z" />
-    </svg>
-  )
-}
-
-export function SendIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  )
-}
-
-export function SkipIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <polyline points="13 17 18 12 13 7" />
-      <polyline points="6 17 11 12 6 7" />
-    </svg>
-  )
-}
-
-export function FlagIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-      <line x1="4" y1="22" x2="4" y2="15" />
-    </svg>
-  )
-}
-
-export function ImageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <polyline points="21 15 16 10 5 21" />
-    </svg>
-  )
-}
-
-export function BellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  )
-}
-
-export function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
+    <div className="relative flex items-center justify-center" style={{ width: size * 1.7, height: size * 1.7 }}>
+      {/* Radial glow */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: size * 2.1,
+          height: size * 2.1,
+          background: 'radial-gradient(circle, rgba(124,90,240,0.45) 0%, transparent 70%)',
+          filter: 'blur(18px)',
+        }}
+      />
+      {/* Scanning rings */}
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="absolute rounded-full border"
+          style={{
+            width: size * 2.1,
+            height: size * 2.1,
+            borderColor: `rgba(167,139,250,${0.6 - i * 0.08})`,
+            animation: `scanner-ring 3s ease-out infinite`,
+            animationDelay: `${i * 0.75}s`,
+          }}
+        />
+      ))}
+      {/* Rotating rings */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: size * 3.8,
+          height: size * 3.8,
+          border: '1px dashed rgba(124,90,240,0.3)',
+          animation: 'spin-slow 12s linear infinite',
+        }}
+      >
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 7,
+            height: 7,
+            top: -3.5,
+            left: '50%',
+            marginLeft: -3.5,
+            background: '#7c5af0',
+            boxShadow: '0 0 8px #7c5af0',
+          }}
+        />
+      </div>
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: size * 3,
+          height: size * 3,
+          border: '1px dashed rgba(167,139,250,0.2)',
+          animation: 'spin-reverse 8s linear infinite',
+        }}
+      >
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 5,
+            height: 5,
+            bottom: -2.5,
+            left: '50%',
+            marginLeft: -2.5,
+            background: '#a78bfa',
+            boxShadow: '0 0 6px #a78bfa',
+          }}
+        />
+      </div>
+      {/* Tick marks */}
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div
+          key={i}
+          className="absolute"
+          style={{
+            width: 1,
+            height: i % 3 === 0 ? 10 : 5,
+            background: `rgba(124,90,240,${i % 3 === 0 ? 0.6 : 0.25})`,
+            transformOrigin: '50% 110px',
+            transform: `rotate(${i * 30}deg) translateY(-100px)`,
+          }}
+        />
+      ))}
+      {/* Center heart */}
+      <div
+        className="relative z-10 flex items-center justify-center rounded-full heartbeat"
+        style={{
+          width: size * 1.7,
+          height: size * 1.7,
+          background: 'radial-gradient(135deg, #7c5af0 0%, #5b3fd4 100%)',
+          boxShadow: '0 0 32px rgba(124,90,240,0.7), 0 0 64px rgba(124,90,240,0.25)',
+          color: '#fff',
+        }}
+      >
+        <HeartLucide size={size * 0.6} fill="currentColor" />
+      </div>
+    </div>
+  );
 }

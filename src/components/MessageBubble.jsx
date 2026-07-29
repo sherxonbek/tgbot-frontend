@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { CheckCheck, Check } from 'lucide-react';
 
 function MessageBubble({ message, prevSame, isMe }) {
   const showRead = isMe && message.read;
@@ -40,9 +41,9 @@ function MessageBubble({ message, prevSame, isMe }) {
           }}
         >
           <span>{message.time}</span>
-          {showRead && <span style={{ color: '#60a5fa' }}>✓✓</span>}
-          {showDelivered && !showRead && <span style={{ color: 'rgba(255,255,255,0.3)' }}>✓✓</span>}
-          {isMe && !showDelivered && !showRead && <span style={{ color: 'rgba(255,255,255,0.15)' }}>✓</span>}
+          {showRead && <CheckCheck size={13} style={{ color: '#60a5fa' }} />}
+          {showDelivered && !showRead && <CheckCheck size={13} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+          {isMe && !showDelivered && !showRead && <Check size={13} style={{ color: 'rgba(255,255,255,0.15)' }} />}
         </div>
       </div>
     </div>
