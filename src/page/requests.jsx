@@ -6,7 +6,6 @@ import { UserAvatar } from '../components/Avatar';
 import { useChatRequests } from '../hooks/useChatRequests';
 import { useUser } from '../context/UserContext';
 import { savePartnerToLocalStorage } from '../utils/blacklist';
-import { socket } from '../services/socket';
 
 const backBtnStyle = {
   width: 36, height: 36,
@@ -73,17 +72,9 @@ export function RequestsPage() {
 
   const [actionDone, setActionDone] = useState({}); // { [fromTgId]: 'accepted' | 'declined' }
 
+  // Bir marta yuklash — keyin socket realtime yangilab turadi
   useEffect(() => {
     loadPendingRequests();
-    const interval = setInterval(loadPendingRequests, 15000);
-    return () => clearInterval(interval);
-  }, [loadPendingRequests]);
-
-  // Yangi so'rov kelganda avtomatik yangilash
-  useEffect(() => {
-    const onNewRequest = () => loadPendingRequests();
-    socket.on('chat_request_received', onNewRequest);
-    return () => socket.off('chat_request_received', onNewRequest);
   }, [loadPendingRequests]);
 
   const handleAccept = (req) => {
