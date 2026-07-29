@@ -28,6 +28,40 @@ const resolveTelegramId = async (attempts = 15, intervalMs = 120) => {
 };
 
 /**
+ * Render free tier serverini uyg'otish uchun ping.
+ * Render free tier 15 daqiqa harakatsizlikdan so'ng serverni sleep ga o'tkazadi.
+ * Bu funksiya server uyg'onguncha qayta-qayta urinib ko'radi.
+ */
+export async function wakeUpServer(maxAttempts = 12, delayMs = 5000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(`${API_BASE}/`, {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log(`✅ Server uyg'ondi! (urinish: ${i + 1})`);
+        return true;
+      }
+    } catch {
+      console.log(`⏳ Server uyg'onmoqda... (urinish: ${i + 1}/${maxAttempts})`);
+    }
+
+    if (i < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  console.error("Server uyg'otilmadi. Render.com dashboard dan tekshiring.");
+  return false;
+}
+
+/**
  * Authenticates the user via Telegram initData.
  * Sets an httpOnly cookie on the server side.
  * Must be called before any other API calls.

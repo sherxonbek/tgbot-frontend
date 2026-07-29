@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authenticateWithTelegram, fetchCurrentUser } from '../services/api';
+import { authenticateWithTelegram, fetchCurrentUser, wakeUpServer } from '../services/api';
 
 const CACHE_KEY = 'cached_user_data';
 const UserContext = createContext(null);
@@ -44,6 +44,7 @@ export function UserProvider({ children }) {
   // loading always starts as TRUE — user to'liq kelguncha hech narsa chizilmaydi
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [serverStatus, setServerStatus] = useState('waking'); // 'waking' | 'online' | 'offline'
 
   const refreshUser = useCallback(async () => {
     const data = await fetchCurrentUser();
@@ -59,7 +60,21 @@ export function UserProvider({ children }) {
 
     const init = async () => {
       try {
-        // 1. Serverga so'rov yuboramiz
+        // 0. Render free tier serverini uyg'otish
+        // Server sleep da bo'lsa, 30-50 soniya kerak bo'ladi
+        setServerStatus('waking');
+        const serverAwake = await wakeUpServer(8, 5000); // ~40 soniya urinish
+        if (cancelled) return;
+
+        if (!serverAwake) {
+          setServerStatus('offline');
+          setLoading(false);
+          return;
+        }
+
+        setServerStatus('online');
+
+        // 1. Serverga auth so'rov yuboramiz
         const authResult = await authenticateWithTelegram();
         if (cancelled) return;
 
@@ -104,7 +119,7 @@ export function UserProvider({ children }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser }}>
+    <UserContext.Provider value={{ user, loading, refreshUser, serverStatus }}>
       {children}
     </UserContext.Provider>
   );
