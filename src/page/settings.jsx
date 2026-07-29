@@ -1,11 +1,12 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { BackIcon, ChevronRight, StarIcon, SupportIcon, ImageIcon, CheckIcon, SettingsIcon } from '../assets/icon';
+import { Users } from 'lucide-react';
 import { PlanBadge } from '../components/PlanBadge';
 import { UserAvatar } from '../components/Avatar';
 import { IconButton } from '../components/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { updateUserProfile, uploadImage, resolveAvatarUrl } from '../services/api';
+import { updateUserProfile, uploadImage, resolveAvatarUrl, updatePreferredGender, updateVIPPreferences } from '../services/api';
 
 const REGIONS = [
   "Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro",
@@ -605,6 +606,40 @@ export function SettingsPage() {
             </div>
           )}
 
+          {/* VIP: Chat History link */}
+          {user?.plan === 'VIP' && (
+            <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+              <SettingsRow
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="18" height="18">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    <path d="M8 10h.01" /><path d="M12 10h.01" /><path d="M16 10h.01" />
+                  </svg>
+                }
+                label="Chat tarixi"
+                sub="O'tgan suhbatlaringizni ko'ring"
+                accent={false}
+                onClick={() => navigate('/chat-history')}
+              />
+            </div>
+          )}
+
+          {/* VIP: Kengaytirilgan filtrlash */}
+          {user?.plan === 'VIP' && (
+            <>
+              <VIPGenderFilter
+                currentGender={user?.preferredGender}
+                tgId={user?.tg_id}
+                refreshUser={refreshUser}
+              />
+              <VIPAdvancedFilters
+                user={user}
+                tgId={user?.tg_id}
+                refreshUser={refreshUser}
+              />
+            </>
+          )}
+
           <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
             {settingsRows.map((row, index) => (
               <Fragment key={row.label}>
@@ -628,6 +663,323 @@ export function SettingsPage() {
           style={{ background: 'transparent' }}
         />
       )}
+    </div>
+  );
+}
+
+// ── VIP: Kengaytirilgan filtrlash (yosh + viloyat) ────────────────────────
+
+function VIPAdvancedFilters({ user, tgId, refreshUser }) {
+  const [minAge, setMinAge] = useState(user?.preferredMinAge || '');
+  const [maxAge, setMaxAge] = useState(user?.preferredMaxAge || '');
+  const [region, setRegion] = useState(user?.preferredRegion || '');
+  const [saving, setSaving] = useState(false);
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+
+  const handleSave = async (field, value) => {
+    setSaving(true);
+    try {
+      await updateVIPPreferences(tgId, { [field]: value || null });
+      await refreshUser();
+    } catch (err) {
+      console.error('VIP filter error:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Header */}
+      <div className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center gap-2">
+          <span
+            className="flex items-center justify-center rounded-xl flex-shrink-0"
+            style={{
+              width: 38,
+              height: 38,
+              background: 'rgba(245,158,11,0.15)',
+              color: '#f59e0b',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="18" height="18">
+              <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
+            </svg>
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium" style={{ color: '#fcd34d' }}>
+              Kengaytirilgan filtrlash
+            </div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              VIP: yosh oralig'i va viloyat bo'yicha saralash
+            </div>
+          </div>
+          {saving && (
+            <svg className="animate-spin" viewBox="0 0 24 24" fill="none" width="16" height="16">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="#a78bfa" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 py-3 space-y-3">
+        {/* Age range */}
+        <div>
+          <label className="text-xs font-medium mb-1.5 block" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Yosh oralig'i
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={15}
+              max={100}
+              placeholder="15"
+              value={minAge}
+              onChange={e => setMinAge(e.target.value)}
+              onBlur={() => handleSave('preferredMinAge', minAge ? Number(minAge) : null)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#f0effc',
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 13,
+                width: 70,
+                outline: 'none',
+              }}
+            />
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>—</span>
+            <input
+              type="number"
+              min={15}
+              max={100}
+              placeholder="60"
+              value={maxAge}
+              onChange={e => setMaxAge(e.target.value)}
+              onBlur={() => handleSave('preferredMaxAge', maxAge ? Number(maxAge) : null)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#f0effc',
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 13,
+                width: 70,
+                outline: 'none',
+              }}
+            />
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>yosh</span>
+          </div>
+        </div>
+
+        {/* Region filter */}
+        <div>
+          <label className="text-xs font-medium mb-1.5 block" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Viloyat bo'yicha filtrlash
+          </label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowRegionPicker(!showRegionPicker)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: region ? '#f0effc' : 'rgba(255,255,255,0.3)',
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 13,
+                width: '100%',
+                outline: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>{region || 'Viloyat tanlanmagan (hamma)'}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" style={{
+                transform: showRegionPicker ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+                color: 'rgba(255,255,255,0.4)',
+              }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {showRegionPicker && (
+              <div
+                className="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden animate-slide-up"
+                style={{
+                  background: '#15151f',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegion('');
+                    setShowRegionPicker(false);
+                    handleSave('preferredRegion', null);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                  style={{
+                    color: !region ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+                    background: !region ? 'rgba(124,90,240,0.1)' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  Hamma viloyatlar
+                </button>
+                {REGIONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => {
+                      setRegion(r);
+                      setShowRegionPicker(false);
+                      handleSave('preferredRegion', r);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    style={{
+                      color: region === r ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+                      background: region === r ? 'rgba(124,90,240,0.1)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (region !== r) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (region !== r) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{r}</span>
+                      {region === r && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" style={{ color: '#a78bfa' }}>
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Click outside to close */}
+      {showRegionPicker && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowRegionPicker(false)} style={{ background: 'transparent' }} />
+      )}
+    </div>
+  );
+}
+
+// ── VIP: Jins bo'yicha filtrlash komponenti ──────────────────────────────
+
+function VIPGenderFilter({ currentGender, tgId, refreshUser }) {
+  const [selected, setSelected] = useState(currentGender || 'all');
+  const [saving, setSaving] = useState(false);
+
+  // Prop o'zgarganda synclash (refreshUser dan keyin)
+  useEffect(() => {
+    setSelected(currentGender || 'all');
+  }, [currentGender]);
+
+  const options = [
+    { value: 'all', label: "Farqi yo'q", icon: '🌍' },
+    { value: 'Erkak', label: 'Erkaklar', icon: '♂️' },
+    { value: 'Ayol', label: 'Ayollar', icon: '♀️' },
+  ];
+
+  const handleChange = async (value) => {
+    if (value === selected) return;
+    setSelected(value);
+    setSaving(true);
+    try {
+      const prefGender = value === 'all' ? null : value;
+      await updatePreferredGender(tgId, prefGender);
+      await refreshUser();
+    } catch (err) {
+      console.error('Gender filter error:', err);
+      setSelected(currentGender || 'all');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mx-4 mt-4 rounded-2xl overflow-hidden" style={sectionStyle}>
+      <div className="px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center gap-2">
+          <span
+            className="flex items-center justify-center rounded-xl flex-shrink-0"
+            style={{
+              width: 38,
+              height: 38,
+              background: 'rgba(245,158,11,0.15)',
+              color: '#f59e0b',
+            }}
+          >
+            <Users size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium" style={{ color: '#fcd34d' }}>
+              Jins bo'yicha filtrlash
+            </div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              VIP funksiya: kim bilan suhbatlashishni tanlang
+            </div>
+          </div>
+          {saving && (
+            <svg className="animate-spin" viewBox="0 0 24 24" fill="none" width="16" height="16">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="#a78bfa" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-2 px-4 py-3">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => handleChange(opt.value)}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all flex-1 justify-center"
+            style={{
+              background: selected === opt.value
+                ? 'rgba(124,90,240,0.2)'
+                : 'rgba(255,255,255,0.04)',
+              border: selected === opt.value
+                ? '1px solid rgba(124,90,240,0.4)'
+                : '1px solid rgba(255,255,255,0.06)',
+              color: selected === opt.value ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+              cursor: saving ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (selected !== opt.value && !saving) {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selected !== opt.value) {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+              }
+            }}
+          >
+            <span>{opt.icon}</span>
+            <span>{opt.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { SkipIcon, FlagIcon, AnimatedSend } from '../assets/icon';
-import { MessageCircle, Users } from 'lucide-react';
+import { MessageCircle, Users, Image as ImageIcon, Mic, MicOff, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
@@ -8,6 +8,7 @@ import MessageBubble from '../components/MessageBubble';
 import { Navbar } from '../components/navbar';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
+import { uploadImage, uploadAudio, resolveAvatarUrl } from '../services/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
@@ -32,6 +33,12 @@ function isReadLocally(messageId) {
   return readMessageIds().includes(messageId);
 }
 
+function formatRecordingTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export function ChatPage() {
   const currentUser = useCurrentUser();
   const [matchUser, setMatchUser] = useState(() => {
@@ -47,6 +54,18 @@ export function ChatPage() {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const [onlineCount, setOnlineCount] = useState(null);
+
+  // Media upload states
+  const fileInputRef = useRef(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
 
   const typingTimerRef = useRef(null);
   const bottomRef = useRef(null);
@@ -197,6 +216,113 @@ export function ChatPage() {
 
     socket.emit('send_message', { ...newMessage, tempId });
     setTimeout(() => setSending(false), 300);
+  };
+
+  // ── Media Upload (Image) ─────────────────────────────────────────────────
+  const handleImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser || !matchUser) return;
+
+    setUploadingMedia(true);
+    setShowMediaPicker(false);
+    try {
+      const result = await uploadImage(file);
+      if (result?.mediaUrl) {
+        const tempId = Date.now();
+        const newMessage = {
+          id: tempId,
+          text: '',
+          type: 'image',
+          mediaUrl: resolveAvatarUrl(result.mediaUrl),
+          from: 'me',
+          senderTgId: currentUser.tg_id,
+          recipientTgId: matchUser.tg_id,
+          read: false,
+          time: now(),
+        };
+
+        setMessages((prev) => [...prev, newMessage]);
+        socket.emit('send_message', { ...newMessage, tempId });
+      }
+    } catch (err) {
+      console.error('Rasm yuborish xatosi:', err);
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  // ── Voice Recording ─────────────────────────────────────────────────────
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size < 100) return;
+
+        setUploadingMedia(true);
+        try {
+          const result = await uploadAudio(audioBlob);
+          if (result?.mediaUrl) {
+            const tempId = Date.now();
+            const newMessage = {
+              id: tempId,
+              text: '',
+              type: 'voice',
+              mediaUrl: resolveAvatarUrl(result.mediaUrl),
+              from: 'me',
+              senderTgId: currentUser.tg_id,
+              recipientTgId: matchUser.tg_id,
+              read: false,
+              time: now(),
+            };
+
+            setMessages((prev) => [...prev, newMessage]);
+            socket.emit('send_message', { ...newMessage, tempId });
+          }
+        } catch (err) {
+          console.error('Audio yuborish xatosi:', err);
+        } finally {
+          setUploadingMedia(false);
+        }
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setShowMediaPicker(false);
+
+      // Timer
+      let sec = 0;
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => {
+        sec++;
+        setRecordingTime(sec);
+        if (sec >= 30) stopRecording(); // Max 30 seconds
+      }, 1000);
+    } catch (err) {
+      console.error('Mikrofon xatosi:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
   };
 
   const handleInputChange = (e) => {
@@ -380,6 +506,102 @@ export function ChatPage() {
 
       {/* Input area */}
       <div className="flex-shrink-0 px-3 py-3 flex items-end gap-2 mb-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,18,0.95)', backdropFilter: 'blur(16px)', paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
+        {/* VIP: Media buttons (left side) */}
+        {currentUser?.plan === 'VIP' && !isRecording && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMediaPicker(!showMediaPicker)}
+              className="flex items-center justify-center rounded-2xl flex-shrink-0 transition-all"
+              style={{
+                width: 46,
+                height: 46,
+                background: showMediaPicker ? 'rgba(124,90,240,0.2)' : 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: showMediaPicker ? '#a78bfa' : 'rgba(255,255,255,0.45)',
+                cursor: 'pointer',
+              }}
+              disabled={uploadingMedia}
+              aria-label="Add media"
+            >
+              <ImageIcon size={20} />
+            </button>
+
+            {showMediaPicker && (
+              <>
+                <div
+                  className="absolute bottom-full left-0 mb-2 rounded-xl overflow-hidden z-50"
+                  style={{
+                    background: '#1a1a2e',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                    minWidth: 140,
+                  }}
+                >
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center gap-2 text-xs px-4 py-3 transition-colors"
+                    style={{ color: '#f0effc', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.12)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <ImageIcon size={16} style={{ color: '#a78bfa' }} />
+                    Rasm yuborish
+                  </button>
+                  <button
+                    onClick={startRecording}
+                    className="w-full flex items-center gap-2 text-xs px-4 py-3 transition-colors"
+                    style={{ color: '#f0effc', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.12)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <Mic size={16} style={{ color: '#f59e0b' }} />
+                    Ovozli xabar
+                  </button>
+                </div>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMediaPicker(false)} />
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Recording indicator */}
+        {isRecording && (
+          <button
+            onClick={stopRecording}
+            className="flex items-center justify-center rounded-2xl flex-shrink-0 transition-all animate-pulse-glow"
+            style={{
+              width: 46,
+              height: 46,
+              background: 'rgba(239,68,68,0.2)',
+              border: '1px solid rgba(239,68,68,0.4)',
+              color: '#f87171',
+              cursor: 'pointer',
+            }}
+            aria-label="Stop recording"
+          >
+            <MicOff size={20} />
+          </button>
+        )}
+
+        {/* Recording timer */}
+        {isRecording && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <span className="w-2 h-2 rounded-full" style={{ background: '#f87171', animation: 'heartbeat 1s ease-in-out infinite' }} />
+            <span className="text-xs font-medium" style={{ color: '#f87171', fontVariantNumeric: 'tabular-nums' }}>
+              {formatRecordingTime(recordingTime)}
+            </span>
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={handleImageSelect}
+          style={{ display: 'none' }}
+        />
+
         <div className="flex-1 flex items-end rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', minHeight: 44, maxHeight: 120 }}>
           <textarea
             value={input}
@@ -390,8 +612,9 @@ export function ChatPage() {
                 sendMessage();
               }
             }}
-            placeholder="Write a message…"
+            placeholder={uploadingMedia ? 'Yuklanmoqda...' : 'Write a message…'}
             rows={1}
+            disabled={uploadingMedia}
             className="flex-1 bg-transparent text-sm px-4 py-3 resize-none outline-none"
             style={{
               color: '#f0effc',
@@ -405,7 +628,7 @@ export function ChatPage() {
 
         <button
           onClick={sendMessage}
-          disabled={!input.trim()}
+          disabled={!input.trim() || uploadingMedia}
           className="flex items-center justify-center rounded-2xl flex-shrink-0 transition-all"
           style={{
             width: 46,

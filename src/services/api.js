@@ -322,3 +322,81 @@ export async function updateUserStatus(tgId, status) {
     console.error('Statusni yangilashda xatolik:', error);
   }
 }
+
+// ─── VIP: Filter API (gender, age range, region) ──────────────────────────
+
+export async function updatePreferredGender(tgId, preferredGender) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_URL}/${tgId}/preferences`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': initData,
+    },
+    credentials: 'include',
+    body: JSON.stringify({ preferredGender }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Sozlamalarni yangilashda xatolik');
+  }
+  return response.json();
+}
+
+export async function updateVIPPreferences(tgId, preferences) {
+  const initData = getTelegramInitData();
+  const response = await fetch(`${API_URL}/${tgId}/preferences`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': initData,
+    },
+    credentials: 'include',
+    body: JSON.stringify(preferences),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'VIP sozlamalarni yangilashda xatolik');
+  }
+  return response.json();
+}
+
+// ─── VIP: Chat History API ─────────────────────────────────────────────────
+
+export async function fetchChatHistory({ page = 1 } = {}) {
+  const initData = getTelegramInitData();
+  const tgId = getTelegramId();
+  const response = await fetch(`${API_BASE}/api/users/${tgId}/chat-history?page=${page}`, {
+    headers: { 'x-telegram-init-data': initData },
+    credentials: 'include',
+  });
+  if (!response.ok) throw new Error('Chat tarixini olishda xatolik');
+  return response.json();
+}
+
+// ─── VIP: Audio Upload API ──────────────────────────────────────────────────
+
+export async function uploadAudio(audioBlob) {
+  const initData = getTelegramInitData();
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'voice.webm');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/upload/audio`, {
+      method: 'POST',
+      headers: {
+        'x-telegram-init-data': initData,
+      },
+      credentials: 'include',
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'Audio yuklashda xatolik');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Audio yuklashda xatolik:', error);
+    throw error;
+  }
+}
