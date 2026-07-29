@@ -145,6 +145,37 @@ export function SettingsPage() {
 
   // Filter accordion state
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersContentRef = useRef(null);
+  const [filtersHeight, setFiltersHeight] = useState(0);
+
+  // Active filter count
+  const activeFilterCount = [
+    user?.preferredGender && user?.preferredGender !== 'all',
+    user?.preferredMinAge,
+    user?.preferredMaxAge,
+    user?.preferredRegion,
+  ].filter(Boolean).length;
+
+  // Accordion ochilganda height ni o'lchash
+  useEffect(() => {
+    if (filtersContentRef.current) {
+      setFiltersHeight(filtersContentRef.current.scrollHeight);
+    }
+  }, [filtersOpen, user?.preferredGender, user?.preferredMinAge, user?.preferredMaxAge, user?.preferredRegion]);
+
+  const clearAllFilters = async () => {
+    try {
+      await updateVIPPreferences(user?.tg_id, {
+        preferredGender: null,
+        preferredMinAge: null,
+        preferredMaxAge: null,
+        preferredRegion: null,
+      });
+      await refreshUser();
+    } catch (err) {
+      console.error('Clear filters error:', err);
+    }
+  };
 
   useEffect(() => {
     setCurrentAvatar(resolveAvatarUrl(user?.avatar));
@@ -482,11 +513,30 @@ export function SettingsPage() {
               <SectionHeader
                 icon={<Sliders size={18} />}
                 label="Filtrlash"
-                sub={`Jins · Yosh oralig'i · Viloyat`}
+                sub={
+                  activeFilterCount > 0
+                    ? `${activeFilterCount} ta filtr faol · Jins · Yosh · Viloyat`
+                    : `Jins · Yosh oralig'i · Viloyat`
+                }
                 accent
                 onClick={() => setFiltersOpen(!filtersOpen)}
                 rightIcon={
                   <div className="flex items-center gap-2">
+                    {/* Active filter count badge */}
+                    {activeFilterCount > 0 && (
+                      <span
+                        className="flex items-center justify-center rounded-full text-[10px] font-bold"
+                        style={{
+                          width: 20, height: 20,
+                          background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+                          color: '#1a0a00',
+                          boxShadow: '0 0 8px rgba(245,158,11,0.4)',
+                          animation: 'heartbeat 2s ease-in-out infinite',
+                        }}
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
                       VIP
@@ -496,43 +546,116 @@ export function SettingsPage() {
                 }
               />
 
-              {/* Accordion content */}
+              {/* Accordion content — auto-height animation */}
               <div
-                className="overflow-hidden transition-all duration-300 ease-in-out"
+                className="overflow-hidden transition-all duration-400 ease-out"
                 style={{
-                  maxHeight: filtersOpen ? 600 : 0,
+                  maxHeight: filtersOpen ? filtersHeight || 600 : 0,
                   opacity: filtersOpen ? 1 : 0,
+                  transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
                 }}
               >
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
+                <div ref={filtersContentRef}>
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
 
-                {/* Gender filter */}
-                <div className="px-4 py-3">
-                  <label className="text-xs font-medium mb-2 block" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    <span className="flex items-center gap-1.5">
-                      <Users size={14} />
-                      Jins bo'yicha filtrlash
-                    </span>
-                  </label>
-                  <VIPGenderFilterInline
-                    currentGender={user?.preferredGender}
-                    tgId={user?.tg_id}
-                    refreshUser={refreshUser}
-                  />
-                </div>
+                  {/* Active filter chips */}
+                  {activeFilterCount > 0 && (
+                    <div className="px-4 pt-3 pb-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {user?.preferredGender && user?.preferredGender !== 'all' && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                            style={{
+                              background: 'rgba(124,90,240,0.15)',
+                              border: '1px solid rgba(124,90,240,0.25)',
+                              color: '#a78bfa',
+                            }}
+                          >
+                            {user?.preferredGender === 'Erkak' ? '♂️ Erkak' : '♀️ Ayol'}
+                          </span>
+                        )}
+                        {(user?.preferredMinAge || user?.preferredMaxAge) && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                            style={{
+                              background: 'rgba(16,185,129,0.15)',
+                              border: '1px solid rgba(16,185,129,0.25)',
+                              color: '#6ee7b7',
+                            }}
+                          >
+                            {user?.preferredMinAge || '15'}–{user?.preferredMaxAge || '100'} yosh
+                          </span>
+                        )}
+                        {user?.preferredRegion && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium"
+                            style={{
+                              background: 'rgba(245,158,11,0.15)',
+                              border: '1px solid rgba(245,158,11,0.25)',
+                              color: '#fcd34d',
+                            }}
+                          >
+                            📍 {user?.preferredRegion}
+                          </span>
+                        )}
+                        <button
+                          onClick={clearAllFilters}
+                          className="inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            border: '1px solid rgba(239,68,68,0.2)',
+                            color: '#f87171',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                        >
+                          ✕ Tozalash
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
+                  {/* Gender filter */}
+                  <div
+                    className="px-4 py-3"
+                    style={{
+                      animation: filtersOpen ? 'fade-in-up 0.35s ease forwards' : 'none',
+                      opacity: 0,
+                    }}
+                  >
+                    <label className="text-xs font-medium mb-2 block" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      <span className="flex items-center gap-1.5">
+                        <Users size={14} />
+                        Jins bo'yicha filtrlash
+                      </span>
+                    </label>
+                    <VIPGenderFilterInline
+                      currentGender={user?.preferredGender}
+                      tgId={user?.tg_id}
+                      refreshUser={refreshUser}
+                    />
+                  </div>
 
-                {/* Advanced filters */}
-                <div className="px-4 py-3 space-y-3">
-                  <label className="text-xs font-medium block" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    Yosh oralig'i va viloyat
-                  </label>
-                  <VIPAdvancedFiltersInline
-                    user={user}
-                    tgId={user?.tg_id}
-                    refreshUser={refreshUser}
-                  />
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
+
+                  {/* Advanced filters */}
+                  <div
+                    className="px-4 py-3 space-y-3"
+                    style={{
+                      animation: filtersOpen ? 'fade-in-up 0.35s ease 0.1s forwards' : 'none',
+                      opacity: 0,
+                    }}
+                  >
+                    <label className="text-xs font-medium block" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Yosh oralig'i va viloyat
+                    </label>
+                    <VIPAdvancedFiltersInline
+                      user={user}
+                      tgId={user?.tg_id}
+                      refreshUser={refreshUser}
+                    />
+                  </div>
                 </div>
               </div>
             </SectionCard>
