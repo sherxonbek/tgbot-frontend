@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { SkipIcon, FlagIcon, SendIcon, AnimatedSend } from '../assets/icon';
-import { MessageCircle } from 'lucide-react';
+import { SkipIcon, FlagIcon, AnimatedSend } from '../assets/icon';
+import { MessageCircle, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
@@ -46,6 +46,7 @@ export function ChatPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(null);
 
   const typingTimerRef = useRef(null);
   const bottomRef = useRef(null);
@@ -126,6 +127,7 @@ export function ChatPage() {
       );
     };
 
+    const onOnlineCount = ({ count }) => setOnlineCount(count);
     const onPartnerTyping = () => setPartnerTyping(true);
     const onPartnerStopTyping = () => setPartnerTyping(false);
 
@@ -137,8 +139,14 @@ export function ChatPage() {
     socket.on('messages_read', onMessagesRead);
     socket.on('message_sent', onMessageSent);
     socket.on('message_delivered', onMessageDelivered);
+    socket.on('online_count', onOnlineCount);
     socket.on('partner_typing', onPartnerTyping);
     socket.on('partner_stop_typing', onPartnerStopTyping);
+
+    // Get initial online count
+    if (socket.connected) {
+      socket.emit('get_online_count');
+    }
 
     return () => {
       socket.off('matched', onMatched);
@@ -149,6 +157,7 @@ export function ChatPage() {
       socket.off('messages_read', onMessagesRead);
       socket.off('message_sent', onMessageSent);
       socket.off('message_delivered', onMessageDelivered);
+      socket.off('online_count', onOnlineCount);
       socket.off('partner_typing', onPartnerTyping);
       socket.off('partner_stop_typing', onPartnerStopTyping);
     };
@@ -250,6 +259,13 @@ export function ChatPage() {
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
         <ScannerHeart />
         <div className="text-center mt-6" style={{ maxWidth: 260 }}>
+          {onlineCount !== null && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs mb-3" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)', color: '#a78bfa' }}>
+              <Users size={13} />
+              <span className="font-medium">{onlineCount}</span>
+              <span style={{ color: 'rgba(167,139,250,0.6)' }}>online</span>
+            </div>
+          )}
           <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
             Faol foydalanuvchi qidirilmoqda...
           </p>

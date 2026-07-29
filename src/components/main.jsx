@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Users } from 'lucide-react';
 import { ScannerHeart } from './ScannerHeart';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { socket, connectSocket } from '../services/socket';
@@ -16,6 +17,7 @@ export function Main() {
     const currentUser = useCurrentUser();
     const navigate = useNavigate();
     const [isSearching, setIsSearching] = useState(false);
+    const [onlineCount, setOnlineCount] = useState(null);
 
     useEffect(() => {
         if (!socket.connected && currentUser) {
@@ -35,12 +37,23 @@ export function Main() {
             setIsSearching(true);
         };
 
+        const onOnlineCount = ({ count }) => {
+            setOnlineCount(count);
+        };
+
+        // Get initial online count
+        if (socket.connected) {
+            socket.emit('get_online_count');
+        }
+
         socket.on('matched', onMatched);
         socket.on('waiting', onWaiting);
+        socket.on('online_count', onOnlineCount);
 
         return () => {
             socket.off('matched', onMatched);
             socket.off('waiting', onWaiting);
+            socket.off('online_count', onOnlineCount);
         };
     }, [navigate, currentUser]);
 
@@ -57,10 +70,19 @@ export function Main() {
         <main className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-8">
             <ScannerHeart />
 
-            <div className="text-center" style={{ maxWidth: 240 }}>
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
-                    {isSearching ? 'Faol foydalanuvchi qidirilmoqda...' : 'Suhbatni boshlash uchun bosing'}
-                </p>
+            <div className="text-center" style={{ maxWidth: 260 }}>
+                {onlineCount !== null && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs mb-3" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)', color: '#a78bfa' }}>
+                        <Users size={13} />
+                        <span className="font-medium">{onlineCount}</span>
+                        <span style={{ color: 'rgba(167,139,250,0.6)' }}>online</span>
+                    </div>
+                )}
+                {isSearching && (
+                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
+                        Faol foydalanuvchi qidirilmoqda...
+                    </p>
+                )}
             </div>
 
             <button
