@@ -47,7 +47,7 @@ function getDateGroup(dateString) {
 }
 
 // ─── Notification Card (with truncation + mark-read on click) ─────────────
-function NotificationCard({ notification, index, onReadStatusChange, onRequestAction }) {
+function NotificationCard({ notification, index, onReadStatusChange }) {
   const [isVisible, setIsVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [isRead, setIsRead] = useState(notification.read);
@@ -85,19 +85,22 @@ function NotificationCard({ notification, index, onReadStatusChange, onRequestAc
     await markAsRead();
   };
 
+  const navigate = useNavigate();
+
   // Chat request action
   const handleRequestAction = async (action) => {
     if (actionDone) return;
     setActionDone(action);
 
+    const meta = notification.metadata;
+
     if (action === 'accepted') {
       // Socket orqali accept
       socket.emit('respond_chat_request', {
-        fromTgId: notification.metadata?.fromTgId,
+        fromTgId: meta?.fromTgId,
         action: 'accepted',
       });
-      // Chatga navigatsiya
-      const meta = notification.metadata;
+      // Chatga navigatsiya uchun sessionStorage
       if (meta?.fromTgId) {
         savePartnerToLocalStorage(meta.fromTgId);
         sessionStorage.setItem('matchUser', JSON.stringify({
@@ -108,7 +111,7 @@ function NotificationCard({ notification, index, onReadStatusChange, onRequestAc
       }
     } else {
       socket.emit('respond_chat_request', {
-        fromTgId: notification.metadata?.fromTgId,
+        fromTgId: meta?.fromTgId,
         action: 'declined',
       });
     }
@@ -116,10 +119,8 @@ function NotificationCard({ notification, index, onReadStatusChange, onRequestAc
     await markAsRead();
 
     if (action === 'accepted') {
-      // Suhbatga o'tish
-      setTimeout(() => {
-        window.location.href = '/chat';
-      }, 300);
+      // Suhbatga o'tish (navigate bilan — hard refresh o'rniga)
+      navigate('/chat');
     }
   };
 

@@ -75,8 +75,8 @@ export default function App() {
   // 4. Hamma ma'lumot to'liq — UI chizamiz
   return (
     <BrowserRouter>
-      {/* Global matched listener (direct chat request accept uchun) */}
-      {socket.connected && <GlobalMatchListener />}
+      {/* Global matched listener (doimiy mount — socket.connected shartisiz) */}
+      <GlobalMatchListener />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/settings" element={<SettingsPage />} />

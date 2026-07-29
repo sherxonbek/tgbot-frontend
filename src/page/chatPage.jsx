@@ -83,6 +83,28 @@ export function ChatPage() {
     }
   }, [matchUser]);
 
+  // Mount bo'lganda partner statusni tekshirish (agar sessionStorage bo'sh bo'lsa)
+  useEffect(() => {
+    if (!socket.connected || !currentUser) return;
+
+    const saved = sessionStorage.getItem('matchUser');
+    if (saved) return; // Allaqachon matchUser bor
+
+    // Backenddan tekshiramiz
+    socket.emit('check_partner');
+
+    const onCurrentPartner = (data) => {
+      if (data?.partner?.tg_id) {
+        sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+        savePartnerToLocalStorage(data.partner.tg_id);
+        setMatchUser(data.partner);
+      }
+    };
+
+    socket.on('current_partner', onCurrentPartner);
+    return () => socket.off('current_partner', onCurrentPartner);
+  }, [currentUser?.tg_id, socket.connected]);
+
   useEffect(() => {
     if (!socket.connected && currentUser) {
       connectSocket(currentUser.tg_id);
