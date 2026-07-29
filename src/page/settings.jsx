@@ -331,31 +331,13 @@ export function SettingsPage() {
             style={{ cursor: isEditing ? 'pointer' : 'default' }}
             onClick={isEditing ? handleAvatarClick : undefined}
           >
-            {currentAvatar ? (
-              <img
-                src={currentAvatar}
-                alt={user?.name}
-                key={currentAvatar}
-                className="rounded-full object-cover transition-all duration-300"
-                style={{
-                  width: isEditing ? 88 : 76,
-                  height: isEditing ? 88 : 76,
-                  border: '2.5px solid rgba(124,90,240,0.65)',
-                  boxShadow: avatarHover
-                    ? '0 0 30px rgba(124,90,240,0.5)'
-                    : '0 0 20px rgba(124,90,240,0.35)',
-                  filter: uploading ? 'brightness(0.6)' : 'none',
-                  transition: 'all 0.3s ease',
-                }}
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            ) : (
-              <UserAvatar
-                name={user?.name}
-                avatar={user?.avatar}
-                size={isEditing ? 88 : 76}
-              />
-            )}
+            {/* UserAvatar handles loading, initials, and real image */}
+            <UserAvatar
+              name={user?.name}
+              avatar={currentAvatar || user?.avatar}
+              size={isEditing ? 88 : 76}
+              border={false}
+            />
 
             {/* Upload overlay */}
             {isEditing && (
