@@ -19,9 +19,9 @@ export default function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="fade-in-up" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <Navbar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <Main />
       </div>
 
