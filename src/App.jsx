@@ -7,7 +7,6 @@ import { AdminPage } from './page/admin';
 import NotificationsPage from './page/notifications';
 import { ChatHistoryPage } from './page/chatHistory';
 import { useUser } from './context/UserContext';
-import { ScannerHeart } from './components/ScannerHeart';
 import { socket } from './services/socket';
 import { savePartnerToLocalStorage } from './utils/blacklist';
 
@@ -44,12 +43,20 @@ export default function App() {
 
   const { user, loading } = useUser();
 
-  // 1. Chiroyli loading ekrani
+  // 1. Oddiy loading ekrani
   if (loading) {
     return (
-      <div className="fade-in-up flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
-        <ScannerHeart />
-        <div className="text-center mt-8" style={{ maxWidth: 240 }}>
+      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a12', color: '#f0effc' }}>
+        <div
+          className="animate-spin rounded-full"
+          style={{
+            width: 36,
+            height: 36,
+            border: '3px solid rgba(124,90,240,0.15)',
+            borderTopColor: '#7c5af0',
+          }}
+        />
+        <div className="text-center mt-6" style={{ maxWidth: 240 }}>
           <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
             Yuklanmoqda...
           </p>
