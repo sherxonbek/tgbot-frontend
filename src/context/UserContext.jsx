@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { authenticateWithTelegram, fetchCurrentUser, wakeUpServer } from '../services/api';
+import { authenticateWithTelegram, fetchCurrentUser, pingServer } from '../services/api';
 
 const CACHE_KEY = 'cached_user_data';
 const UserContext = createContext(null);
@@ -60,29 +60,32 @@ export function UserProvider({ children }) {
 
     const init = async () => {
       try {
-        // 0. Render free tier serverini uyg'otish
-        // Server sleep da bo'lsa, 30-50 soniya kerak bo'ladi
-        setServerStatus('waking');
-        const serverAwake = await wakeUpServer(8, 5000); // ~40 soniya urinish
+        // 0. Avval cached ma'lumot bilan UI ni ochamiz (server kutmaymiz!)
+        const cached = loadCachedUser();
+        if (cached && !cancelled) {
+          setUser(cached);
+          setLoading(false);
+        }
+
+        // 1. Serverga ping yuboramiz (tezda — 6 sekund timeout)
+        const serverOnline = await pingServer();
         if (cancelled) return;
 
-        if (!serverAwake) {
+        if (!serverOnline) {
+          // Server ishlamayapti — cached user bilan davom etamiz
           setServerStatus('offline');
-          setLoading(false);
+          if (!cached) setLoading(false);
           return;
         }
 
         setServerStatus('online');
 
-        // 1. Serverga auth so'rov yuboramiz
+        // 2. Serverga auth so'rov yuboramiz
         const authResult = await authenticateWithTelegram();
         if (cancelled) return;
 
         if (!authResult) {
-          // 2a. Auth xatosi — cached ma'lumot bormi?
-          const cached = loadCachedUser();
-          if (!cancelled) {
-            setUser(cached);
+          if (!cached && !cancelled) {
             setLoading(false);
           }
           return;
@@ -93,23 +96,17 @@ export function UserProvider({ children }) {
         if (cancelled) return;
 
         if (data) {
-          // 4a. Serverdan to'liq ma'lumot keldi — loading ni o'chiramiz
           setUser(data);
           cacheUser(data);
           setLoading(false);
-        } else {
-          // 4b. Serverda user topilmadi — cached ma'lumot bormi?
-          const cached = loadCachedUser();
-          setUser(cached);
+        } else if (!cached && !cancelled) {
           setLoading(false);
         }
       } catch (error) {
         console.error('User init error:', error);
         if (!cancelled) {
-          // 5. Xatolik — cached ma'lumot bilan davom etamiz
           const cached = loadCachedUser();
-          setUser(cached);
-          setLoading(false);
+          if (!cached) setLoading(false);
         }
       }
     };

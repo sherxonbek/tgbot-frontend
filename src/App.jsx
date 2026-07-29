@@ -6,7 +6,7 @@ import { ChatPage } from './page/chatPage';
 import { AdminPage } from './page/admin';
 import NotificationsPage from './page/notifications';
 import { useUser } from './context/UserContext';
-import { AnimatedLoader } from './assets/icon';
+import { ScannerHeart } from './components/ScannerHeart';
 
 export default function App() {
   useEffect(() => {
@@ -18,14 +18,19 @@ export default function App() {
 
   const { user, loading } = useUser();
 
-  // 1. Serverdan javob kutilyapti
+  // 1. Chiroyli loading ekrani
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
-        <AnimatedLoader size={32} style={{ color: '#a78bfa' }} />
-        <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          Yuklanmoqda, iltimos kuting...
-        </p>
+      <div className="fade-in-up flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
+        <ScannerHeart />
+        <div className="text-center mt-8" style={{ maxWidth: 240 }}>
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+            Yuklanmoqda...
+          </p>
+          <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            Telegram Chat
+          </p>
+        </div>
       </div>
     );
   }
