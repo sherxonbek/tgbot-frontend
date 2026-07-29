@@ -147,6 +147,12 @@ export function ChatPage() {
       );
     };
 
+    const onMatchError = ({ message }) => {
+      console.error('Socket xatolik:', message);
+      setMediaError(message || 'Xatolik yuz berdi');
+      setTimeout(() => setMediaError(''), 5000);
+    };
+
     const onOnlineCount = ({ count }) => setOnlineCount(count);
     const onPartnerTyping = () => setPartnerTyping(true);
     const onPartnerStopTyping = () => setPartnerTyping(false);
@@ -159,6 +165,7 @@ export function ChatPage() {
     socket.on('messages_read', onMessagesRead);
     socket.on('message_sent', onMessageSent);
     socket.on('message_delivered', onMessageDelivered);
+    socket.on('match_error', onMatchError);
     socket.on('online_count', onOnlineCount);
     socket.on('partner_typing', onPartnerTyping);
     socket.on('partner_stop_typing', onPartnerStopTyping);
@@ -177,6 +184,7 @@ export function ChatPage() {
       socket.off('messages_read', onMessagesRead);
       socket.off('message_sent', onMessageSent);
       socket.off('message_delivered', onMessageDelivered);
+      socket.off('match_error', onMatchError);
       socket.off('online_count', onOnlineCount);
       socket.off('partner_typing', onPartnerTyping);
       socket.off('partner_stop_typing', onPartnerStopTyping);
