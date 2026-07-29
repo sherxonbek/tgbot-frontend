@@ -19,11 +19,13 @@ export default function HomePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="fade-in-up relative flex flex-col" style={{ minHeight: '100dvh', minWidth: 0 }}>
+    <div className="fade-in-up flex flex-col" style={{ height: '100dvh', minWidth: 0, position: 'relative', overflow: 'hidden' }}>
       <Navbar />
-      <Main />
+      <div className="flex-1 flex flex-col overflow-y-auto" style={{ position: 'relative', zIndex: 1 }}>
+        <Main />
+      </div>
 
-      <div className="absolute" style={{ bottom: 28, right: 24 }}>
+      <div style={{ position: 'absolute', bottom: 28, right: 24, zIndex: 10 }}>
         <IconButton
           onClick={() => navigate('/settings')}
           className="rounded-2xl"

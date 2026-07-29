@@ -89,8 +89,7 @@ export function ScannerHeartIcon({ size = 52 }) {
         style={{
           width: size * 2.1,
           height: size * 2.1,
-          background: 'radial-gradient(circle, rgba(124,90,240,0.45) 0%, transparent 70%)',
-          filter: 'blur(18px)',
+          background: 'radial-gradient(circle, rgba(124,90,240,0.35) 0%, transparent 70%)',
         }}
       />
       {/* Scanning rings */}

@@ -375,13 +375,14 @@ export function NotificationsPage() {
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center justify-center rounded-xl transition-all"
           style={backBtnStyle}
           aria-label="Go back"
         >
           <BackIcon />
-        </button>          <div className="flex-1">
+        </button>
+        <div className="flex-1">
           <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
             Bildirishnomalar
           </span>
