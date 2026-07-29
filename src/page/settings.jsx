@@ -656,14 +656,21 @@ export function SettingsPage() {
                       refreshUser={refreshUser}
                     />
                   </div>
+
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 16px' }} />
+
+                  {/* Online users (manual refresh, 1min auto-cleanup) */}
+                  <div
+                    style={{
+                      animation: filtersOpen ? 'fade-in-up 0.35s ease 0.2s forwards' : 'none',
+                      opacity: 0,
+                    }}
+                  >
+                    <VIPOnlineUsers currentUser={user} forceVisible />
+                  </div>
                 </div>
               </div>
             </SectionCard>
-          )}
-
-          {/* ──────── SECTION: VIP Online Users ──────── */}
-          {isVip && (
-            <VIPOnlineUsers currentUser={user} />
           )}
 
           {/* ──────── SECTION: Subscribe ──────── */}
