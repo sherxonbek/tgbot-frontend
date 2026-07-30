@@ -8,7 +8,7 @@ import MessageBubble from '../components/MessageBubble';
 import { Navbar } from '../components/navbar';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
-import { uploadImage, uploadAudio, resolveAvatarUrl } from '../services/api';
+import { uploadImageDirect, uploadAudioDirect } from '../services/cloudinary';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
@@ -257,14 +257,14 @@ export function ChatPage() {
     setUploadingMedia(true);
     setShowMediaPicker(false);
     try {
-      const result = await uploadImage(file);
-      if (result?.mediaUrl) {
+      const mediaUrl = await uploadImageDirect(file);
+      if (mediaUrl) {
         const tempId = Date.now();
         const newMessage = {
           id: tempId,
           text: '',
           type: 'image',
-          mediaUrl: resolveAvatarUrl(result.mediaUrl),
+          mediaUrl,
           from: 'me',
           senderTgId: currentUser.tg_id,
           recipientTgId: matchUser.tg_id,
@@ -302,14 +302,14 @@ export function ChatPage() {
 
         setUploadingMedia(true);
         try {
-          const result = await uploadAudio(audioBlob);
-          if (result?.mediaUrl) {
+          const mediaUrl = await uploadAudioDirect(audioBlob);
+          if (mediaUrl) {
             const tempId = Date.now();
             const newMessage = {
               id: tempId,
               text: '',
               type: 'voice',
-              mediaUrl: resolveAvatarUrl(result.mediaUrl),
+              mediaUrl,
               from: 'me',
               senderTgId: currentUser.tg_id,
               recipientTgId: matchUser.tg_id,
@@ -379,9 +379,17 @@ export function ChatPage() {
     if (!currentUser || !matchUser) return;
 
     try {
+      // Telegram WebApp initData ni olish (cookie yo'q bo'lsa fallback sifatida)
+      const initData = window.Telegram?.WebApp?.initData || '';
+      
+      const headers = { 'Content-Type': 'application/json' };
+      if (initData) {
+        headers['x-telegram-init-data'] = initData;
+      }
+
       const response = await fetch(`${API_BASE}/api/reports`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           reportedTgId: matchUser.tg_id,
