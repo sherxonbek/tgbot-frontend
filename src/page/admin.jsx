@@ -16,8 +16,9 @@ import {
 import {
   LayoutDashboard, Users, Flag, Send, Trash2, Shield, Star,
   Search, ChevronLeft, ChevronRight as ChevronRightIcon,
-  Activity, Ban, Clock, Calendar,
+  Activity, Ban, Clock, Calendar, TrendingUp, UserPlus,
 } from 'lucide-react';
+import { DonutChart, AreaChart, MiniBars } from '../components/adminCharts';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -89,32 +90,19 @@ function StatCard({ label, value, icon: Icon, color, delay = 0 }) {
   );
 }
 
-/* ─── Gender bar ───────────────────────────────────────────────────────────── */
-function GenderBar({ label, count, total, icon, color }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="flex-1 rounded-2xl p-3 glass card-glow">
-      <div className="flex items-center gap-2 mb-2">
-        <span style={{ fontSize: 18 }}>{icon}</span>
-        <span className="text-sm font-medium" style={{ color: '#f0effc' }}>{label}</span>
-        <span className="ml-auto text-lg font-bold" style={{ color }}>{count}</span>
-      </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-1000"
-          style={{
-            width: `${pct}%`,
-            background: `linear-gradient(90deg, ${color}, ${color}99)`,
-            boxShadow: `0 0 12px ${color}66`,
-          }}
-        />
-      </div>
-      <div className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{pct}%</div>
-    </div>
-  );
-}
-
 // ─── Dashboard ──────────────────────────────────────────────────────────────
+
+const PLAN_COLORS = {
+  Free: '#6ee7b7',
+  VIP: '#fcd34d',
+  Admin: '#a78bfa',
+  Banned: '#f87171',
+};
+
+const GENDER_COLORS = {
+  Erkak: '#818cf8',
+  Ayol: '#f472b6',
+};
 
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -133,12 +121,26 @@ function AdminDashboard() {
         <div className="grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map(i => <div key={i} className="rounded-2xl h-[86px] skeleton" />)}
         </div>
+        <div className="rounded-2xl h-[180px] skeleton" />
+        <div className="rounded-2xl h-[140px] skeleton" />
       </div>
     );
   }
   if (!stats) return <div className="text-center py-12 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Ma'lumot yuklanmadi</div>;
 
   const total = stats.totalUsers || 0;
+  const genderData = (stats.genderStats || []).map(g => ({
+    label: g._id || 'Noma\'lum',
+    value: g.count,
+    color: GENDER_COLORS[g._id] || '#94a3b8',
+  }));
+  const planData = (stats.planStats || []).map(p => ({
+    label: p._id || 'Noma\'lum',
+    value: p.count,
+    color: PLAN_COLORS[p._id] || '#94a3b8',
+  }));
+  const growth = stats.growth || [];
+  const growthTotal = growth.reduce((s, g) => s + g.count, 0);
 
   return (
     <div className="p-4 space-y-4">
@@ -150,35 +152,56 @@ function AdminDashboard() {
         <StatCard label="Bloklangan" value={stats.bannedUsers} icon={Ban} color="#f87171" delay={180} />
         <StatCard label="Kutilayotgan shikoyat" value={stats.pendingReports} icon={Clock} color="#fb923c" delay={240} />
         <StatCard label="Bugungi shikoyat" value={stats.todayReports} icon={Calendar} color="#60a5fa" delay={300} />
+        <StatCard label="Bugungi yangi" value={stats.newUsersToday} icon={UserPlus} color="#34d399" delay={360} />
+        <StatCard label="14 kunlik o'sish" value={growthTotal} icon={TrendingUp} color="#22d3ee" delay={420} />
       </div>
 
-      {/* Gender distribution */}
-      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '120ms' }}>
+      {/* Growth chart (14 days) */}
+      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '140ms' }}>
         <div className="flex items-center gap-2 mb-3">
-          <span className="gradient-text text-sm font-bold">Jins bo'yicha</span>
-          <span className="ml-auto text-[10px] chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
-            {stats.genderStats?.length || 0} guruh
+          <span className="gradient-text text-sm font-bold">Foydalanuvchilar o'sishi</span>
+          <span className="ml-auto text-[10px] chip" style={{ background: 'rgba(34,211,238,0.12)', color: '#67e8f9', border: '1px solid rgba(34,211,238,0.2)' }}>
+            <TrendingUp size={10} /> 14 kun
           </span>
         </div>
-        <div className="flex gap-3">
-          {stats.genderStats?.map(g => (
-            <GenderBar
-              key={g._id}
-              label={g._id}
-              count={g.count}
-              total={total}
-              icon={g._id === 'Erkak' ? '👨' : '👩'}
-              color={g._id === 'Erkak' ? '#818cf8' : '#f472b6'}
-            />
-          ))}
-          {!stats.genderStats?.length && (
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>Ma'lumot yo'q</div>
-          )}
+        {growth.length > 0 ? (
+          <>
+            <AreaChart data={growth} height={130} color="#67e8f9" gradientId="growth-grad" />
+            <MiniBars data={growth} color="#22d3ee" height={44} />
+          </>
+        ) : (
+          <div className="text-xs py-8 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>Ma'lumot yo'q</div>
+        )}
+      </div>
+
+      {/* Gender donut + Plan breakdown */}
+      <div className="grid grid-cols-1 gap-4">
+        <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="gradient-text text-sm font-bold">Jins bo'yicha taqsimot</span>
+          </div>
+          <DonutChart
+            data={genderData.length ? genderData : [{ label: 'Ma\'lumot yo\'q', value: 0, color: '#94a3b8' }]}
+            centerLabel="jami"
+            centerValue={total}
+          />
+        </div>
+
+        <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '260ms' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="gradient-text text-sm font-bold">Plan taqsimoti</span>
+          </div>
+          <DonutChart
+            data={planData.length ? planData : [{ label: 'Ma\'lumot yo\'q', value: 0, color: '#94a3b8' }]}
+            centerLabel="foydalanuvchi"
+            size={130}
+            thickness={14}
+          />
         </div>
       </div>
 
       {/* Top regions */}
-      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
+      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '320ms' }}>
         <div className="text-sm font-bold mb-3" style={{ color: '#f0effc' }}>Eng ko'p foydalanuvchili viloyatlar</div>
         <div className="space-y-2.5">
           {stats.regionStats?.map((r, i) => (
@@ -220,19 +243,27 @@ function AdminDashboard() {
 
 // ─── Users Management ──────────────────────────────────────────────────────
 
+const REGIONS_FILTER = [
+  "Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro",
+  "Farg'ona", "Andijon", "Namangan", "Qashqadaryo",
+  "Surxondaryo", "Jizzax", "Sirdaryo", "Navoiy", "Xorazm", "Qoraqalpog'iston",
+];
+
 function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchAdminUsers({ search, plan: planFilter, page });
+      const data = await fetchAdminUsers({ search, plan: planFilter, gender: genderFilter, region: regionFilter, page });
       setUsers(data.users);
       setTotal(data.total);
     } catch (e) {
@@ -240,7 +271,7 @@ function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  }, [search, planFilter, page]);
+  }, [search, planFilter, genderFilter, regionFilter, page]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -298,6 +329,27 @@ function AdminUsers() {
           <option value="VIP" style={{ background: '#12121f' }}>VIP</option>
           <option value="Admin" style={{ background: '#12121f' }}>Admin</option>
           <option value="Banned" style={{ background: '#12121f' }}>Banned</option>
+        </select>
+        <select
+          className="glass rounded-xl"
+          style={{ padding: '11px 12px', fontSize: 13, color: '#f0effc', outline: 'none', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}
+          value={genderFilter}
+          onChange={e => { setGenderFilter(e.target.value); setPage(1); }}
+        >
+          <option value="" style={{ background: '#12121f' }}>Hamma jins</option>
+          <option value="Erkak" style={{ background: '#12121f' }}>Erkak</option>
+          <option value="Ayol" style={{ background: '#12121f' }}>Ayol</option>
+        </select>
+        <select
+          className="glass rounded-xl"
+          style={{ padding: '11px 12px', fontSize: 13, color: '#f0effc', outline: 'none', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}
+          value={regionFilter}
+          onChange={e => { setRegionFilter(e.target.value); setPage(1); }}
+        >
+          <option value="" style={{ background: '#12121f' }}>Hamma viloyat</option>
+          {REGIONS_FILTER.map(r => (
+            <option key={r} value={r} style={{ background: '#12121f' }}>{r}</option>
+          ))}
         </select>
       </div>
 
@@ -723,7 +775,7 @@ function AdminBroadcast() {
           </select>
           <select style={selectBase} value={filter.region} onChange={e => setFilter(f => ({ ...f, region: e.target.value }))}>
             <option value="" style={{ background: '#12121f' }}>Barcha viloyat</option>
-            {["Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro", "Farg'ona", "Andijon", "Namangan", "Qashqadaryo", "Surxondaryo", "Jizzax", "Sirdaryo", "Navoiy", "Xorazm", "Qoraqalpog'iston"].map(r => (
+            {REGIONS_FILTER.map(r => (
               <option key={r} value={r} style={{ background: '#12121f' }}>{r}</option>
             ))}
           </select>
