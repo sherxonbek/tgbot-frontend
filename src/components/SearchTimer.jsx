@@ -1,4 +1,6 @@
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
+import { sfx, isSfxEnabled, setSfxEnabled } from '../utils/sfx';
 
 // Qidiruv davomida necha soniya o'tganini chiroyli aylanma progress bilan ko'rsatadi.
 // elapsed — o'tgan soniya, total — umumiy vaqt (timeout).
@@ -11,6 +13,22 @@ export function SearchTimer({ elapsed = 0, total = 60 }) {
   const C = 2 * Math.PI * R;
   const offset = C * (1 - fraction);
   const color = urgent ? '#fbbf24' : '#a78bfa';
+  const [muted, setMuted] = useState(() => !isSfxEnabled());
+
+  // Har soniyada yumshoq tik ovoz + haptic
+  useEffect(() => {
+    if (elapsed <= 0) return;
+    if (urgent) sfx.tickUrgent();
+    else sfx.tick();
+  }, [elapsed, urgent]);
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setSfxEnabled(!next);
+    // Ovoz yoqilganda AudioContext ni user gesture ichida tayyorlaymiz
+    if (!next) sfx.warm();
+  };
 
   return (
     <div className="flex flex-col items-center animate-bounce-in">
@@ -24,6 +42,27 @@ export function SearchTimer({ elapsed = 0, total = 60 }) {
             animation: 'spin-slow 18s linear infinite',
           }}
         />
+
+        {/* Ovoz yoqish / o'chirish */}
+        <button
+          onClick={toggleMute}
+          className="absolute flex items-center justify-center rounded-full transition-all z-10"
+          style={{
+            top: -14,
+            left: -14,
+            width: 30,
+            height: 30,
+            background: muted ? 'rgba(255,255,255,0.07)' : 'rgba(124,90,240,0.18)',
+            border: `1px solid ${muted ? 'rgba(255,255,255,0.1)' : 'rgba(124,90,240,0.35)'}`,
+            color: muted ? 'rgba(255,255,255,0.4)' : '#a78bfa',
+            cursor: 'pointer',
+            boxShadow: muted ? 'none' : '0 0 12px rgba(124,90,240,0.25)',
+            backdropFilter: 'blur(10px)',
+          }}
+          aria-label={muted ? 'Ovozni yoqish' : 'Ovozni o\'chirish'}
+        >
+          {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+        </button>
 
         <svg width="146" height="146" viewBox="0 0 146 146" style={{ transform: 'rotate(-90deg)' }}>
           <defs>

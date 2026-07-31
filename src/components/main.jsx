@@ -6,6 +6,7 @@ import { SearchTimer } from './SearchTimer';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
+import { sfx } from '../utils/sfx';
 
 const SEARCH_TIMEOUT_MS = 60000; // 60 soniya — shuncha vaqt ichida juft topilmasa avtomatik to'xtaydi
 
@@ -42,6 +43,7 @@ export function Main() {
         stopClock();
         setIsSearching(false);
         setSearchTimedOut(false);
+        sfx.cancel();
         socket.emit('cancel_match');
     };
 
@@ -65,6 +67,7 @@ export function Main() {
             stopClock();
             setIsSearching(false);
             setSearchTimedOut(false);
+            sfx.match();
             const partnerId = data.partner?.tg_id;
             savePartnerToLocalStorage(partnerId);
             sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
@@ -102,6 +105,7 @@ export function Main() {
         clearTimer();
         setIsSearching(true);
         setSearchTimedOut(false);
+        sfx.warm(); // AudioContext ni user gesture ichida tayyorlaymiz
         startClock();
 
         const userTgId = currentUser.tg_id;
@@ -113,6 +117,7 @@ export function Main() {
             stopClock();
             setSearchTimedOut(true);
             setIsSearching(false);
+            sfx.timeout();
             socket.emit('cancel_match');
         }, SEARCH_TIMEOUT_MS);
     };

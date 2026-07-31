@@ -9,6 +9,7 @@ import MessageBubble from '../components/MessageBubble';
 import { Navbar } from '../components/navbar';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
+import { sfx } from '../utils/sfx';
 import { uploadImageDirect, uploadAudioDirect } from '../services/cloudinary';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -105,6 +106,7 @@ export function ChatPage() {
     clearSearchTimer();
     setIsSearching(true);
     setSearchTimedOut(false);
+    sfx.warm(); // AudioContext ni user gesture ichida tayyorlaymiz
     startClock();
     socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
     // 60 soniyada juft topilmasa — avtomatik to'xtatamiz
@@ -112,6 +114,7 @@ export function ChatPage() {
       stopClock();
       setSearchTimedOut(true);
       setIsSearching(false);
+      sfx.timeout();
       socket.emit('cancel_match');
     }, SEARCH_TIMEOUT_MS);
   };
@@ -121,6 +124,7 @@ export function ChatPage() {
     stopClock();
     setIsSearching(false);
     setSearchTimedOut(false);
+    sfx.cancel();
     socket.emit('cancel_match');
     navigate('/');
   };
@@ -171,6 +175,7 @@ export function ChatPage() {
     const onMatched = (data) => {
       clearSearchTimer();
       stopClock();
+      sfx.match();
       setMatchUser(data.partner);
       sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
       savePartnerToLocalStorage(data.partner?.tg_id);
