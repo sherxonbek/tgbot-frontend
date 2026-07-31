@@ -4,6 +4,7 @@ import { MessageCircle, Users, Image as ImageIcon, Mic, MicOff, X, RotateCcw } f
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
+import { SearchTimer } from '../components/SearchTimer';
 import MessageBubble from '../components/MessageBubble';
 import { Navbar } from '../components/navbar';
 import { socket, connectSocket } from '../services/socket';
@@ -56,8 +57,10 @@ export function ChatPage() {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const [onlineCount, setOnlineCount] = useState(null);
+  const [searchSeconds, setSearchSeconds] = useState(0);
   const [mediaError, setMediaError] = useState(''); // Media upload error toast
   const searchTimerRef = useRef(null);
+  const searchClockRef = useRef(null);
 
   // Media upload states
   const fileInputRef = useRef(null);
@@ -84,14 +87,29 @@ export function ChatPage() {
     if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
   };
 
+  // Sekund hisoblagich (taymer) — har 1 soniyada yangilanadi
+  const startClock = () => {
+    stopClock();
+    setSearchSeconds(0);
+    searchClockRef.current = setInterval(() => {
+      setSearchSeconds((s) => Math.min(s + 1, SEARCH_TIMEOUT_MS / 1000));
+    }, 1000);
+  };
+
+  const stopClock = () => {
+    if (searchClockRef.current) { clearInterval(searchClockRef.current); searchClockRef.current = null; }
+  };
+
   const startSearch = () => {
     if (!currentUser) return;
     clearSearchTimer();
     setIsSearching(true);
     setSearchTimedOut(false);
+    startClock();
     socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
     // 60 soniyada juft topilmasa — avtomatik to'xtatamiz
     searchTimerRef.current = setTimeout(() => {
+      stopClock();
       setSearchTimedOut(true);
       setIsSearching(false);
       socket.emit('cancel_match');
@@ -100,6 +118,7 @@ export function ChatPage() {
 
   const cancelSearch = () => {
     clearSearchTimer();
+    stopClock();
     setIsSearching(false);
     setSearchTimedOut(false);
     socket.emit('cancel_match');
@@ -110,6 +129,7 @@ export function ChatPage() {
   useEffect(() => {
     return () => {
       clearSearchTimer();
+      stopClock();
       if (socket.connected) socket.emit('cancel_match');
     };
   }, []);
@@ -150,6 +170,7 @@ export function ChatPage() {
 
     const onMatched = (data) => {
       clearSearchTimer();
+      stopClock();
       setMatchUser(data.partner);
       sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
       savePartnerToLocalStorage(data.partner?.tg_id);
@@ -236,6 +257,7 @@ export function ChatPage() {
 
     return () => {
       clearSearchTimer();
+      stopClock();
       socket.off('matched', onMatched);
       socket.off('waiting', onWaiting);
       socket.off('partner_left', onPartnerLeft);
@@ -470,14 +492,7 @@ export function ChatPage() {
           )}
 
           {isSearching && !searchTimedOut && (
-            <>
-              <p className="text-sm font-medium animate-pulse" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
-                Faol foydalanuvchi qidirilmoqda...
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                Iltimos, ozgina kuting...
-              </p>
-            </>
+            <SearchTimer elapsed={searchSeconds} total={SEARCH_TIMEOUT_MS / 1000} />
           )}
 
           {searchTimedOut && (

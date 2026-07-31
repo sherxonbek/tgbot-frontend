@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, X, RotateCcw } from 'lucide-react';
 import { ScannerHeart } from './ScannerHeart';
+import { SearchTimer } from './SearchTimer';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
@@ -14,15 +15,31 @@ export function Main() {
     const [isSearching, setIsSearching] = useState(false);
     const [searchTimedOut, setSearchTimedOut] = useState(false);
     const [onlineCount, setOnlineCount] = useState(null);
+    const [searchSeconds, setSearchSeconds] = useState(0);
     const timerRef = useRef(null);
+    const clockRef = useRef(null);
 
     const clearTimer = () => {
         if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     };
 
+    // Sekund hisoblagich (taymer) — har 1 soniyada yangilanadi
+    const startClock = () => {
+        stopClock();
+        setSearchSeconds(0);
+        clockRef.current = setInterval(() => {
+            setSearchSeconds((s) => Math.min(s + 1, SEARCH_TIMEOUT_MS / 1000));
+        }, 1000);
+    };
+
+    const stopClock = () => {
+        if (clockRef.current) { clearInterval(clockRef.current); clockRef.current = null; }
+    };
+
     // Qidiruvni to'xtatish (server queue dan olib tashlaydi)
     const cancelSearch = () => {
         clearTimer();
+        stopClock();
         setIsSearching(false);
         setSearchTimedOut(false);
         socket.emit('cancel_match');
@@ -32,6 +49,7 @@ export function Main() {
     useEffect(() => {
         return () => {
             clearTimer();
+            stopClock();
             if (socket.connected) socket.emit('cancel_match');
         };
     }, []);
@@ -44,6 +62,7 @@ export function Main() {
 
         const onMatched = (data) => {
             clearTimer();
+            stopClock();
             setIsSearching(false);
             setSearchTimedOut(false);
             const partnerId = data.partner?.tg_id;
@@ -71,6 +90,7 @@ export function Main() {
 
         return () => {
             clearTimer();
+            stopClock();
             socket.off('matched', onMatched);
             socket.off('waiting', onWaiting);
             socket.off('online_count', onOnlineCount);
@@ -82,6 +102,7 @@ export function Main() {
         clearTimer();
         setIsSearching(true);
         setSearchTimedOut(false);
+        startClock();
 
         const userTgId = currentUser.tg_id;
         const blacklist = getBlacklist();
@@ -89,6 +110,7 @@ export function Main() {
 
         // Timeout — 60 soniyada juft topilmasa qidiruvni to'xtatamiz
         timerRef.current = setTimeout(() => {
+            stopClock();
             setSearchTimedOut(true);
             setIsSearching(false);
             socket.emit('cancel_match');
@@ -122,9 +144,7 @@ export function Main() {
                 )}
 
                 {isSearching && (
-                    <p className="text-sm animate-pulse" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
-                        Faol foydalanuvchi qidirilmoqda...
-                    </p>
+                    <SearchTimer elapsed={searchSeconds} total={SEARCH_TIMEOUT_MS / 1000} />
                 )}
 
                 {searchTimedOut && (
