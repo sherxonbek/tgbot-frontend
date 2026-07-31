@@ -1,126 +1,35 @@
-import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, X, RotateCcw } from 'lucide-react';
 import { ScannerHeart } from './ScannerHeart';
 import { SearchTimer } from './SearchTimer';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import { socket, connectSocket } from '../services/socket';
-import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
-import { sfx } from '../utils/sfx';
-
-const SEARCH_TIMEOUT_MS = 60000; // 60 soniya — shuncha vaqt ichida juft topilmasa avtomatik to'xtaydi
+import { useUser } from '../context/UserContext';
+import { useMatchmaking } from '../hooks/useMatchmaking';
+import { savePartnerToLocalStorage } from '../utils/blacklist';
 
 export function Main() {
-    const currentUser = useCurrentUser();
+    // 15-FIX: deprecated useCurrentUser o'rniga useUser()
+    const { user: currentUser } = useUser();
     const navigate = useNavigate();
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchTimedOut, setSearchTimedOut] = useState(false);
-    const [onlineCount, setOnlineCount] = useState(null);
-    const [searchSeconds, setSearchSeconds] = useState(0);
-    const timerRef = useRef(null);
-    const clockRef = useRef(null);
 
-    const clearTimer = () => {
-        if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    };
-
-    // Sekund hisoblagich (taymer) — har 1 soniyada yangilanadi
-    const startClock = () => {
-        stopClock();
-        setSearchSeconds(0);
-        clockRef.current = setInterval(() => {
-            setSearchSeconds((s) => Math.min(s + 1, SEARCH_TIMEOUT_MS / 1000));
-        }, 1000);
-    };
-
-    const stopClock = () => {
-        if (clockRef.current) { clearInterval(clockRef.current); clockRef.current = null; }
-    };
-
-    // Qidiruvni to'xtatish (server queue dan olib tashlaydi)
-    const cancelSearch = () => {
-        clearTimer();
-        stopClock();
-        setIsSearching(false);
-        setSearchTimedOut(false);
-        sfx.cancel();
-        socket.emit('cancel_match');
-    };
-
-    // Sahifa yopilganda ham server queue dan olib tashlaymiz
-    useEffect(() => {
-        return () => {
-            clearTimer();
-            stopClock();
-            if (socket.connected) socket.emit('cancel_match');
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!socket.connected && currentUser) {
-            const userTgId = currentUser.tg_id;
-            connectSocket(userTgId);
-        }
-
-        const onMatched = (data) => {
-            clearTimer();
-            stopClock();
-            setIsSearching(false);
-            setSearchTimedOut(false);
-            sfx.match();
+    // 🔴 4-FIX: qidiruv logikasi useMatchmaking hook'iga chiqarildi
+    // (ilgari ChatPage.jsx bilan dublikat edi — timer, clock, socket listenerlar bir xil)
+    const {
+        isSearching,
+        searchTimedOut,
+        onlineCount,
+        searchSeconds,
+        startSearch,
+        cancelSearch,
+        SEARCH_TIMEOUT_MS,
+    } = useMatchmaking({
+        tgId: currentUser?.tg_id,
+        onMatched: (data) => {
             const partnerId = data.partner?.tg_id;
             savePartnerToLocalStorage(partnerId);
             sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
             navigate('/chat');
-        };
-
-        const onWaiting = () => {
-            setIsSearching(true);
-        };
-
-        const onOnlineCount = ({ count }) => {
-            setOnlineCount(count);
-        };
-
-        // Get initial online count
-        if (socket.connected) {
-            socket.emit('get_online_count');
-        }
-
-        socket.on('matched', onMatched);
-        socket.on('waiting', onWaiting);
-        socket.on('online_count', onOnlineCount);
-
-        return () => {
-            clearTimer();
-            stopClock();
-            socket.off('matched', onMatched);
-            socket.off('waiting', onWaiting);
-            socket.off('online_count', onOnlineCount);
-        };
-    }, [navigate, currentUser]);
-
-    const handleSearch = () => {
-        if (!currentUser) return;
-        clearTimer();
-        setIsSearching(true);
-        setSearchTimedOut(false);
-        sfx.warm(); // AudioContext ni user gesture ichida tayyorlaymiz
-        startClock();
-
-        const userTgId = currentUser.tg_id;
-        const blacklist = getBlacklist();
-        socket.emit('find_match', { tg_id: userTgId, blacklist });
-
-        // Timeout — 60 soniyada juft topilmasa qidiruvni to'xtatamiz
-        timerRef.current = setTimeout(() => {
-            stopClock();
-            setSearchTimedOut(true);
-            setIsSearching(false);
-            sfx.timeout();
-            socket.emit('cancel_match');
-        }, SEARCH_TIMEOUT_MS);
-    };
+        },
+    });
 
     return (
         <main className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-8">
@@ -176,7 +85,7 @@ export function Main() {
             ) : (
                 <button
                     className="btn-glow flex items-center gap-2 px-10 py-3.5 rounded-full text-xs font-semibold tracking-wide uppercase"
-                    onClick={handleSearch}
+                    onClick={startSearch}
                     style={{ cursor: 'pointer' }}
                 >
                     <span

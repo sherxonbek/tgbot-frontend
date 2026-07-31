@@ -160,6 +160,20 @@ body::after {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PAGE LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 9-FIX: sticky sahifa headerlari — settings/requests/notifications/chatHistory/chatPage
+   da bir xil inline style 5 marta takrorlanardi (rgba(7,7,13,0.55) + blur(16px)).
+   Endi bitta class, hover/transition lar ham shu yerda. */
+.page-header {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(7,7,13,0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    TEXT & BUTTONS
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -217,6 +231,56 @@ body::after {
   font-size: 10px;
   font-weight: 600;
   line-height: 1.5;
+}
+
+/* ─── IconButton (20-FIX: takrorlanuvchi inline style'lar o'rniga) ─── */
+/* Barcha 4 sahifada (home/settings/admin/chatHistory) bir xil inline style
+   takrorlanardi — endi bitta CSS class, hover effekti ham shu yerda. */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Orqaga tugmasi (settings / admin / chatHistory sahifalarida) */
+.icon-btn-back {
+  width: 38px;
+  height: 38px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.icon-btn-back:hover {
+  background: rgba(124,90,240,0.18);
+  border-color: rgba(124,90,240,0.4);
+  box-shadow: 0 6px 26px rgba(124,90,240,0.3);
+  transform: translateY(-2px);
+}
+
+/* Bosh sahifadagi katta Sozlamalar tugmasi */
+.icon-btn-settings {
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.65);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.icon-btn-settings:hover {
+  background: rgba(124,90,240,0.18);
+  border-color: rgba(124,90,240,0.4);
+  box-shadow: 0 6px 26px rgba(124,90,240,0.3);
+  transform: translateY(-2px);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

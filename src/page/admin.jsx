@@ -433,6 +433,7 @@ function AdminUsers() {
                     cursor: actionLoading === u.tg_id ? 'not-allowed' : 'pointer',
                   }}
                   title="O'chirish"
+                  aria-label="Foydalanuvchini o'chirish"
                 >
                   {actionLoading === u.tg_id ? <LoaderSpinner size={12} /> : <Trash2 size={13} />}
                 </button>
@@ -806,12 +807,9 @@ function AdminBroadcast() {
             <CheckIcon />
             Xabar {result.recipientCount} ta foydalanuvchiga yuborildi!
           </div>
-          {result.recipients?.length > 0 && (
-            <div className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              {result.recipients.slice(0, 10).map(r => r.name).join(', ')}
-              {result.recipients.length > 10 && ` va yana ${result.recipients.length - 10} ta...`}
-            </div>
-          )}
+          {/* 🔴 16-FIX: backend `recipients` ro'yxatini qaytarmaydi (faqat recipientCount
+              va jobId) — broadcast asinxron queue orqali ishlaydi, shuning uchun
+              nomlar ro'yxati hech qachon ko'rinmasdi. UI'dan olib tashlandi. */}
         </div>
       )}
     </div>
@@ -844,7 +842,8 @@ export function AdminPage() {
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
       <header className="glass-strong flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <IconButton onClick={() => navigate('/settings')} className="rounded-xl" style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', flexShrink: 0 }} aria-label="Go back">
+        {/* 20-FIX: inline style o'rniga CSS class (.icon-btn-back) */}
+        <IconButton onClick={() => navigate('/settings')} className="icon-btn-back" aria-label="Go back">
           <BackIcon />
         </IconButton>
         <div>
@@ -876,6 +875,7 @@ export function AdminPage() {
                   boxShadow: active ? '0 6px 20px rgba(124,90,240,0.35)' : 'none',
                   cursor: 'pointer',
                 }}
+                aria-label={tab.label}
               >
                 <Icon size={15} />
                 <span className="hidden sm:inline">{tab.label}</span>

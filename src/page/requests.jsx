@@ -3,17 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { BackIcon } from '../assets/icon';
 import { UserPlus, Check, X, MessageCircle } from 'lucide-react';
 import { UserAvatar } from '../components/Avatar';
+import { IconButton } from '../components/IconButton';
 import { useChatRequests } from '../hooks/useChatRequests';
 import { useUser } from '../context/UserContext';
 import { savePartnerToLocalStorage } from '../utils/blacklist';
-
-const backBtnStyle = {
-  width: 36, height: 36,
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.7)',
-  cursor: 'pointer', flexShrink: 0,
-};
 
 function LoadingSkeleton() {
   return (
@@ -102,14 +95,14 @@ export function RequestsPage() {
   return (
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
-      >
-        <button onClick={() => navigate('/')} className="flex items-center justify-center rounded-xl transition-all"
-          style={backBtnStyle} aria-label="Go back"
+      <header className="page-header flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20">
+        <IconButton
+          onClick={() => navigate('/')}
+          className="icon-btn-back"
+          aria-label="Go back"
         >
           <BackIcon />
-        </button>
+        </IconButton>
         <div className="flex-1">
           <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
             So'rovlar
@@ -200,14 +193,29 @@ export function RequestsPage() {
                         <span className="text-sm font-semibold truncate" style={{ color: '#f0effc' }}>
                           {req.fromName || 'Noma\'lum'}
                         </span>
-                        {req.fromTgId && (
-                          <span className="chip flex-shrink-0"
-                            style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}
-                          >
-                            ✨ VIP
-                          </span>
-                        )}
                       </div>
+                      {/* 7-FIX: ilgari barcha so'rovlarda ✨ VIP chip ko'rinardi (faqat VIP so'rov
+                          yubora olgani uchun ma'nosi yo'q edi) — o'rniga yuboruvchi haqida
+                          real ma'lumot: jinsi, viloyati va yoshi ko'rsatiladi. */}
+                      {(req.fromGender || req.fromRegion || req.fromAge) && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {req.fromGender && (
+                            <span className="chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
+                              {req.fromGender === 'Ayol' ? '♀️ Ayol' : '♂️ Erkak'}
+                            </span>
+                          )}
+                          {req.fromAge && (
+                            <span className="chip" style={{ background: 'rgba(16,185,129,0.1)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.2)' }}>
+                              {req.fromAge} yosh
+                            </span>
+                          )}
+                          {req.fromRegion && (
+                            <span className="chip" style={{ background: 'rgba(245,158,11,0.1)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.2)' }}>
+                              📍 {req.fromRegion}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <MessageCircle size={12} style={{ color: 'rgba(255,255,255,0.25)' }} />
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>

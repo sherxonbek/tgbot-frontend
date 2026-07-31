@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { messageQueue } from './messageQueue';
+import { getTelegramInitData } from './api';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://tgbot-backend-r3ei.onrender.com';
 
@@ -18,11 +19,9 @@ export const socket = io(SOCKET_URL, {
 
 // Reconnection state tracking
 let reconnectAttempts = 0;
-let lastConnectTime = 0;
 
 socket.on('connect', () => {
   reconnectAttempts = 0;
-  lastConnectTime = Date.now();
   console.log('✅ Socket ulandi');
 
   // Start message queue processor
@@ -43,6 +42,18 @@ socket.on('connect_error', (error) => {
     console.log(`⏳ WebSocket xatolik (${reconnectAttempts}), HTTP polling...`);
   } else {
     console.warn('⚠️ Socket ulanish xatosi:', error.message);
+  }
+
+  // Auth xatosi — initData tayyor bo'lmagan/eskirgan bo'lishi mumkin.
+  // Faqat initData HAQIQATAN o'zgarganda qo'lda qayta ulanamiz — aks holda
+  // socket.io'ning o'zi backoff bilan avtomatik qayta urinadi (2s → 30s).
+  // Bu yopishib qoluvchi tez loop (connect → error → connect) oldini oladi.
+  if (['Auth required', 'Auth mismatch', 'Auth failed', 'User not found'].includes(error.message)) {
+    const freshInitData = getTelegramInitData();
+    if (freshInitData && socket.auth?.initData !== freshInitData) {
+      socket.auth = { ...socket.auth, initData: freshInitData };
+      socket.connect();
+    }
   }
 });
 
@@ -85,7 +96,12 @@ export function emitStopTyping(recipientTgId) {
 export function connectSocket(tgId) {
   if (!tgId) return;
 
-  socket.auth = { tg_id: String(tgId) };
+  // Server tomonda auth: cookie JWT yoki initData bilan tasdiqlanadi.
+  // tg_id faqat moslikni tekshirish uchun — ishonch manbai emas!
+  socket.auth = {
+    tg_id: String(tgId),
+    initData: getTelegramInitData() || undefined,
+  };
 
   if (!socket.connected) {
     socket.connect();

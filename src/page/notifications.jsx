@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchNotifications, markNotificationsRead, markNotificationRead } from '../services/api';
-import { BackIcon, CheckIcon, AnimatedLoader, BellIcon } from '../assets/icon';
+import { BackIcon, CheckIcon, BellIcon } from '../assets/icon';
 import { Check, X } from 'lucide-react';
+import { IconButton } from '../components/IconButton';
 import { socket } from '../services/socket';
 import { savePartnerToLocalStorage } from '../utils/blacklist';
 
@@ -33,6 +34,38 @@ function getTimeAgo(dateString) {
   if (diffHours < 24) return `${diffHours} soat oldin`;
   if (diffDays < 7) return `${diffDays} kun oldin`;
   return date.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' });
+}
+
+// 🔴 8-FIX: broadcast xabarlardagi URL larni avtomatik havolaga aylantirish.
+// Ilgari xabar faqat matn sifatida ko'rinardi — linklar bosilmaydigan edi.
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+
+function renderMessageWithLinks(text) {
+  if (!text) return text;
+  return String(text)
+    .split(URL_REGEX)
+    .map((part, i) => {
+      if (!/^https?:\/\//.test(part)) return part;
+      // Greedy regex sababli URL oxiriga tinish belgilari (`.`, `,`, `)` va h.k.)
+      // qo'shilib qoladi — ularni havoladan ajratib olamiz.
+      const clean = part.replace(/[.,;:!?)\]}-]+$/, '');
+      const trailing = part.slice(clean.length);
+      return (
+        <span key={i}>
+          <a
+            href={clean}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="transition-colors"
+            style={{ color: '#a78bfa', textDecoration: 'underline', textUnderlineOffset: 2 }}
+          >
+            {clean}
+          </a>
+          {trailing}
+        </span>
+      );
+    });
 }
 
 function getDateGroup(dateString) {
@@ -211,7 +244,7 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
                 WebkitBoxOrient: 'vertical',
               }}
             >
-              {notification.message}
+              {renderMessageWithLinks(notification.message)}
             </div>
             {!expanded && notification.message && notification.message.length > 80 && (
               <button
@@ -378,7 +411,8 @@ export function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // 🔴 13-FIX: `refreshing` state o'lik kodga aylandi — handleRefresh olib tashlandi,
+  // hech qayerda setRefreshing(true) chaqirilmaydi. State va UI indicator ham o'chirildi.
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const listRef = useRef(null);
@@ -397,7 +431,6 @@ export function NotificationsPage() {
       console.error(e);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -415,11 +448,8 @@ export function NotificationsPage() {
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setPage(1);
-    loadNotifications(1);
-  };
+  // 🔴 13-FIX: `handleRefresh` o'lik kod edi — hech qayerda ishlatilmasdi
+  // (refresh UI `loadNotifications` ni to'g'ridan-to'g'ri chaqiradi). Olib tashlandi.
 
   const handleScroll = useCallback(() => {
     if (!listRef.current || loading || !hasMore) return;
@@ -442,29 +472,20 @@ export function NotificationsPage() {
 
   const groupOrder = ['Bugun', 'Kecha', 'Shu hafta', 'Eski'];
 
-  const backBtnStyle = {
-    width: 36, height: 36,
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    color: 'rgba(255,255,255,0.7)',
-    cursor: 'pointer', flexShrink: 0,
-  };
-
   return (
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* ── Header ──────────────────────────────────────────────────── */}
       <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+        className="page-header flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20"
       >
-        <button
+        {/* 9-FIX: backBtnStyle inline style o'rniga umumiy .icon-btn-back class */}
+        <IconButton
           onClick={() => navigate('/')}
-          className="flex items-center justify-center rounded-xl transition-all"
-          style={backBtnStyle}
+          className="icon-btn-back"
           aria-label="Go back"
         >
           <BackIcon />
-        </button>
+        </IconButton>
         <div className="flex-1 min-w-0">
           <div className="text-lg font-bold leading-tight gradient-text truncate">Bildirishnomalar</div>
           <div className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -490,16 +511,6 @@ export function NotificationsPage() {
           </button>
         )}
       </header>
-
-      {/* ── Refresh indicator ──────────────────────────────────────── */}
-      {refreshing && (
-        <div className="flex items-center justify-center py-3">
-          <AnimatedLoader size={18} style={{ color: '#a78bfa' }} />
-          <span className="ml-2 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Yangilanmoqda...
-          </span>
-        </div>
-      )}
 
       {/* ── Content ────────────────────────────────────────────────── */}
       <div
@@ -541,6 +552,9 @@ export function NotificationsPage() {
                         key={notif._id}
                         notification={notif}
                         index={idx}
+                        // 🔴 13-FIX: bitta bildirishnoma o'qilganda unreadCount ham kamayishi kerak
+                        // (prop ilgari hi hech qachon uzatilmagan — local counter muzlab qolardi)
+                        onReadStatusChange={() => setUnreadCount(prev => Math.max(0, prev - 1))}
                       />
                     ))}
                   </div>

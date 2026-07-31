@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import HomePage from './page/home';
 import { SettingsPage } from './page/settings';
 import { ChatPage } from './page/chatPage';
@@ -15,13 +15,11 @@ import { savePartnerToLocalStorage } from './utils/blacklist';
 // Global matched event listener (direct chat uchun)
 function GlobalMatchListener() {
   const navigate = useNavigate();
-  const navigatedRef = useRef(false);
 
   useEffect(() => {
     const handleMatched = (data) => {
       // /chat page'ida bo'lmasa navigatsiya qilamiz
       if (window.location.pathname !== '/chat' && data?.partner?.tg_id) {
-        navigatedRef.current = true;
         savePartnerToLocalStorage(data.partner.tg_id);
         sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
         navigate('/chat');

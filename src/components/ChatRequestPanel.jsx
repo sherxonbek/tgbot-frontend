@@ -110,6 +110,7 @@ export function ChatRequestPanel({ currentUser, isOpen, onClose }) {
             color: 'rgba(255,255,255,0.4)',
             cursor: 'pointer',
           }}
+          aria-label="Panelni yopish"
         >
           <X size={14} />
         </button>

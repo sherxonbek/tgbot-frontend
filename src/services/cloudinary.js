@@ -13,6 +13,14 @@ const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'o3leifwg';
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`;
 
+// 🔴 17-FIX: unsigned upload preset env'da sozlanmagan bo'lsa darhol ogohlantiramiz.
+// `ml_default` ishlamaydi — Cloudinary dashboard'da unsigned preset yaratish kerak:
+// Settings → Upload → Add upload preset → Signing Mode: Unsigned.
+// .env.example ga qarang. Aks holda upload 'Unauthorized' xatosi bilan yiqiladi.
+if (!import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+  console.warn('⚠️ VITE_CLOUDINARY_UPLOAD_PRESET sozlanmagan — default "ml_default" ishlatilmoqda. Rasm/audio yuklash ishlamay qolishi mumkin. Cloudinary dashboard: Settings → Upload → Unsigned preset yarating va uni .env ga yozing.');
+}
+
 const ALLOWED_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const ALLOWED_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/mp4'];
 

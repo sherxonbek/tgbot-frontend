@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   BackIcon, ChevronRight, StarIcon, SupportIcon, CheckIcon,
 } from '../assets/icon';
-import { Users, Sliders, Shield } from 'lucide-react';
+import { Users, Sliders, Shield, X } from 'lucide-react';
 import { PlanBadge } from '../components/PlanBadge';
 import { UserAvatar } from '../components/Avatar';
 import { VIPOnlineUsers } from '../components/VIPOnlineUsers';
@@ -29,16 +29,7 @@ const sectionStyle = {
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
 };
 
-const backButtonStyle = {
-  width: 38, height: 38,
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.7)',
-  cursor: 'pointer', flexShrink: 0,
-  backdropFilter: 'blur(10px)',
-  transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
-};
-
+// 20-FIX: backButtonStyle o'rniga CSS class (.icon-btn-back) — index.css da
 // ── Inline SVG icons ─────────────────────────────────────────────────────────
 
 function CameraIcon() {
@@ -182,6 +173,18 @@ export function SettingsPage() {
     }
   };
 
+  // 🔴 5-FIX: har bir faol filtr uchun ALOHIDA x-cross tugmasi —
+  // ilgari faqat bitta umumiy "Tozalash" bor edi, endi jins/yosh/viloyat
+  // alohida-alohida o'chirilishi mumkin.
+  const clearFilter = async (fields) => {
+    try {
+      await updateVIPPreferences(user?.tg_id, fields);
+      await refreshUser();
+    } catch (err) {
+      console.error('Clear filter error:', err);
+    }
+  };
+
   useEffect(() => {
     setCurrentAvatar(resolveAvatarUrl(user?.avatar));
     setName(user?.name || '');
@@ -278,13 +281,11 @@ export function SettingsPage() {
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+        className="page-header flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20"
       >
         <IconButton
           onClick={() => (isEditing ? handleCancel() : navigate('/'))}
-          className="rounded-xl"
-          style={backButtonStyle}
+          className="icon-btn-back"
           aria-label="Go back"
         >
           <BackIcon />
@@ -588,6 +589,17 @@ export function SettingsPage() {
                             }}
                           >
                             {user?.preferredGender === 'Erkak' ? '♂️ Erkak' : '♀️ Ayol'}
+                            {/* 5-FIX: jins filtrini alohida o'chirish */}
+                            <button
+                              onClick={() => clearFilter({ preferredGender: null })}
+                              className="flex items-center justify-center rounded-full transition-all"
+                              style={{ width: 14, height: 14, background: 'rgba(124,90,240,0.25)', border: 'none', color: '#a78bfa', cursor: 'pointer', padding: 0 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.45)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.25)'; }}
+                              aria-label="Jins filtrini tozalash"
+                            >
+                              <X size={9} />
+                            </button>
                           </span>
                         )}
                         {(user?.preferredMinAge || user?.preferredMaxAge) && (
@@ -600,6 +612,17 @@ export function SettingsPage() {
                             }}
                           >
                             {user?.preferredMinAge || '15'}–{user?.preferredMaxAge || '100'} yosh
+                            {/* 5-FIX: yosh filtrini alohida o'chirish */}
+                            <button
+                              onClick={() => clearFilter({ preferredMinAge: null, preferredMaxAge: null })}
+                              className="flex items-center justify-center rounded-full transition-all"
+                              style={{ width: 14, height: 14, background: 'rgba(16,185,129,0.25)', border: 'none', color: '#6ee7b7', cursor: 'pointer', padding: 0 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.45)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; }}
+                              aria-label="Yosh filtrini tozalash"
+                            >
+                              <X size={9} />
+                            </button>
                           </span>
                         )}
                         {user?.preferredRegion && (
@@ -612,6 +635,17 @@ export function SettingsPage() {
                             }}
                           >
                             📍 {user?.preferredRegion}
+                            {/* 5-FIX: viloyat filtrini alohida o'chirish */}
+                            <button
+                              onClick={() => clearFilter({ preferredRegion: null })}
+                              className="flex items-center justify-center rounded-full transition-all"
+                              style={{ width: 14, height: 14, background: 'rgba(245,158,11,0.25)', border: 'none', color: '#fcd34d', cursor: 'pointer', padding: 0 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(245,158,11,0.45)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(245,158,11,0.25)'; }}
+                              aria-label="Viloyat filtrini tozalash"
+                            >
+                              <X size={9} />
+                            </button>
                           </span>
                         )}
                         <button

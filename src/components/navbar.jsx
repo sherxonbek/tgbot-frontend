@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlanBadge } from './PlanBadge';
 import { UserAvatar } from './Avatar';
@@ -29,43 +29,53 @@ export function Navbar() {
   const { user } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
-  const pollRef = useRef(null);
 
   // O'qilmagan bildirishnomalar sonini olish
   const loadUnreadCount = useCallback(async () => {
     try {
       const data = await fetchUnreadCount();
       setUnreadCount(data.count || 0);
-    } catch (e) {
+    } catch {
       // silent
     }
   }, []);
 
+  // 🔴 PERF FIX: 30 soniyalik HTTP polling olib tashlandi (10k user → ~333 req/s).
+  // Endi faqat sahifa ochilganda yuklaymiz; yangi bildirishnoma kelganda server
+  // `notification_count` socket event orqali push qiladi (quyidagi socket effect).
   useEffect(() => {
-    if (user) {
-      loadUnreadCount();
-      // Har 30 sekundda polling
-      pollRef.current = setInterval(loadUnreadCount, 30000);
-    }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [user, loadUnreadCount]);
+    if (!user) return;
+    let cancelled = false;
+    fetchUnreadCount()
+      .then((data) => { if (!cancelled) setUnreadCount(data.count || 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
 
   const handleBellClick = () => {
     navigate('/notifications');
   };
 
-  // Yangi so'rov kelganda sonni oshirish
+  // Yangi so'rov kelganda sonni oshirish + o'qilmagan bildirishnomalar real-time
   useEffect(() => {
     const onConnect = () => {
       socket.emit('get_pending_requests');
+      // 🔴 Reconnect'da push'lar o'tib ketgan bo'lsa sinxronlashtiramiz
+      loadUnreadCount();
     };
     const onNewRequest = () => {
       setPendingCount(prev => prev + 1);
     };
     const onRequestsUpdate = ({ requests }) => {
       setPendingCount(requests?.length || 0);
+    };
+    // 🔴 PERF FIX: server `notification_count` push qiladi (chat_request yaratilganda)
+    const onNotificationCount = ({ count }) => {
+      setUnreadCount(count || 0);
+    };
+    // Tab yana ko'ringanda (masalan, admin broadcast kelganda) yangilaymiz
+    const onVisibility = () => {
+      if (!document.hidden) loadUnreadCount();
     };
 
     if (socket.connected) {
@@ -75,13 +85,19 @@ export function Navbar() {
     socket.on('connect', onConnect);
     socket.on('chat_request_received', onNewRequest);
     socket.on('pending_requests', onRequestsUpdate);
+    socket.on('notification_count', onNotificationCount);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onVisibility);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('chat_request_received', onNewRequest);
       socket.off('pending_requests', onRequestsUpdate);
+      socket.off('notification_count', onNotificationCount);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onVisibility);
     };
-  }, []);
+  }, [loadUnreadCount]);
 
   const handleRequestsClick = () => {
     setPendingCount(0);

@@ -1,20 +1,19 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { SkipIcon, FlagIcon, AnimatedSend } from '../assets/icon';
 import { MessageCircle, Users, Image as ImageIcon, Mic, MicOff, X, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useUser } from '../context/UserContext';
 import { ScannerHeart } from '../components/ScannerHeart';
 import { SearchTimer } from '../components/SearchTimer';
 import MessageBubble from '../components/MessageBubble';
 import { Navbar } from '../components/navbar';
-import { socket, connectSocket } from '../services/socket';
-import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
-import { sfx } from '../utils/sfx';
+import { socket } from '../services/socket';
+import { savePartnerToLocalStorage } from '../utils/blacklist';
+import { useMatchmaking } from '../hooks/useMatchmaking';
 import { uploadImageDirect, uploadAudioDirect } from '../services/cloudinary';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
-const SEARCH_TIMEOUT_MS = 60000; // 60 soniya — juft topilmasa avtomatik to'xtaydi
 
 function readMessageIds() {
   try {
@@ -24,16 +23,19 @@ function readMessageIds() {
   }
 }
 
+// 🔴 11-FIX: localStorage cheksiz o'sib ketmasligi uchun faqat eng so'nggi
+// MAX_READ_IDS ta o'qilgan ID saqlanadi (eski chat IDlari endi kerak emas).
+const MAX_READ_IDS = 500;
+
 function markAsReadLocally(messageId) {
   const ids = readMessageIds();
   if (!ids.includes(messageId)) {
     ids.push(messageId);
+    if (ids.length > MAX_READ_IDS) {
+      ids.splice(0, ids.length - MAX_READ_IDS);
+    }
     localStorage.setItem('read_message_ids', JSON.stringify(ids));
   }
-}
-
-function isReadLocally(messageId) {
-  return readMessageIds().includes(messageId);
 }
 
 function formatRecordingTime(seconds) {
@@ -43,7 +45,8 @@ function formatRecordingTime(seconds) {
 }
 
 export function ChatPage() {
-  const currentUser = useCurrentUser();
+  // 15-FIX: deprecated useCurrentUser o'rniga useUser()
+  const { user: currentUser } = useUser();
   const [matchUser, setMatchUser] = useState(() => {
     const saved = sessionStorage.getItem('matchUser');
     return saved ? JSON.parse(saved) : null;
@@ -53,15 +56,29 @@ export function ChatPage() {
   const [input, setInput] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchTimedOut, setSearchTimedOut] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(null);
-  const [searchSeconds, setSearchSeconds] = useState(0);
   const [mediaError, setMediaError] = useState(''); // Media upload error toast
-  const searchTimerRef = useRef(null);
-  const searchClockRef = useRef(null);
+
+  // 🔴 4-FIX: qidiruv logikasi useMatchmaking hook'iga chiqarildi
+  // (ilgari Main.jsx bilan dublikat edi — timer, clock, socket listenerlar bir xil)
+  const {
+    isSearching,
+    searchTimedOut,
+    onlineCount,
+    searchSeconds,
+    startSearch,
+    cancelSearch,
+    SEARCH_TIMEOUT_MS,
+  } = useMatchmaking({
+    tgId: currentUser?.tg_id,
+    onMatched: (data) => {
+      setMatchUser(data.partner);
+      sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
+      savePartnerToLocalStorage(data.partner?.tg_id);
+      setMessages([]);
+    },
+  });
 
   // Media upload states
   const fileInputRef = useRef(null);
@@ -78,65 +95,14 @@ export function ChatPage() {
   const typingTimerRef = useRef(null);
   const bottomRef = useRef(null);
   const navigate = useNavigate();
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // ── Qidiruv timeout + bekor qilish ─────────────────────────────
-  const clearSearchTimer = () => {
-    if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
-  };
-
-  // Sekund hisoblagich (taymer) — har 1 soniyada yangilanadi
-  const startClock = () => {
-    stopClock();
-    setSearchSeconds(0);
-    searchClockRef.current = setInterval(() => {
-      setSearchSeconds((s) => Math.min(s + 1, SEARCH_TIMEOUT_MS / 1000));
-    }, 1000);
-  };
-
-  const stopClock = () => {
-    if (searchClockRef.current) { clearInterval(searchClockRef.current); searchClockRef.current = null; }
-  };
-
-  const startSearch = () => {
-    if (!currentUser) return;
-    clearSearchTimer();
-    setIsSearching(true);
-    setSearchTimedOut(false);
-    sfx.warm(); // AudioContext ni user gesture ichida tayyorlaymiz
-    startClock();
-    socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
-    // 60 soniyada juft topilmasa — avtomatik to'xtatamiz
-    searchTimerRef.current = setTimeout(() => {
-      stopClock();
-      setSearchTimedOut(true);
-      setIsSearching(false);
-      sfx.timeout();
-      socket.emit('cancel_match');
-    }, SEARCH_TIMEOUT_MS);
-  };
-
-  const cancelSearch = () => {
-    clearSearchTimer();
-    stopClock();
-    setIsSearching(false);
-    setSearchTimedOut(false);
-    sfx.cancel();
-    socket.emit('cancel_match');
+  // 🔴 4-FIX: cancelSearch (hook) + navigatsiya — ChatPage bekor qilganda bosh sahifaga qaytadi
+  const handleCancelSearch = () => {
+    cancelSearch();
     navigate('/');
   };
-
-  // Sahifa yopilganda ham server queue dan olib tashlaymiz
-  useEffect(() => {
-    return () => {
-      clearSearchTimer();
-      stopClock();
-      if (socket.connected) socket.emit('cancel_match');
-    };
-  }, []);
 
   // Load chat history when match user is set
   useEffect(() => {
@@ -168,24 +134,6 @@ export function ChatPage() {
   }, [currentUser?.tg_id, socket.connected]);
 
   useEffect(() => {
-    if (!socket.connected && currentUser) {
-      connectSocket(currentUser.tg_id);
-    }
-
-    const onMatched = (data) => {
-      clearSearchTimer();
-      stopClock();
-      sfx.match();
-      setMatchUser(data.partner);
-      sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
-      savePartnerToLocalStorage(data.partner?.tg_id);
-      setIsSearching(false);
-      setSearchTimedOut(false);
-      setMessages([]);
-    };
-
-    const onWaiting = () => setIsSearching(true);
-
     const onPartnerLeft = () => {
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
@@ -198,7 +146,14 @@ export function ChatPage() {
     };
 
     const onReceiveMessage = (messageData) => {
-      setMessages((prev) => [...prev, messageData]);
+      // 🔴 4.1 FIX: o'z xabarimizni ignore qilamiz — server endi room ga emas, faqat
+      // qabul qiluvchiga yuboradi. Lekin eski server / qayta ulanish holatlarida echo
+      // kelishi mumkin — dublikat + o'z xabarimizni 'read' deb belgilash oldini olamiz.
+      if (currentUser && messageData?.senderTgId === currentUser.tg_id) return;
+
+      setMessages((prev) =>
+        prev.some((m) => m.id === messageData.id) ? prev : [...prev, messageData]
+      );
 
       // Mark as read if chat is visible
       if (messageData.from === 'them' && matchUser) {
@@ -238,12 +193,22 @@ export function ChatPage() {
       setTimeout(() => setMediaError(''), 5000);
     };
 
-    const onOnlineCount = ({ count }) => setOnlineCount(count);
+    const onMessageError = ({ tempId, error }) => {
+      // Yuborilmagan xabarni optimistik ro'yxatdan olib tashlaymiz
+      if (tempId) {
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      }
+      setMediaError(
+        error === 'not_partner'
+          ? 'Suhbat tugagan. Xabar yuborilmadi.'
+          : 'Xabar yuborilmadi. Qayta urinib ko\'ring.'
+      );
+      setTimeout(() => setMediaError(''), 4000);
+    };
+
     const onPartnerTyping = () => setPartnerTyping(true);
     const onPartnerStopTyping = () => setPartnerTyping(false);
 
-    socket.on('matched', onMatched);
-    socket.on('waiting', onWaiting);
     socket.on('partner_left', onPartnerLeft);
     socket.on('chat_history', onChatHistory);
     socket.on('receive_message', onReceiveMessage);
@@ -251,20 +216,14 @@ export function ChatPage() {
     socket.on('message_sent', onMessageSent);
     socket.on('message_delivered', onMessageDelivered);
     socket.on('match_error', onMatchError);
-    socket.on('online_count', onOnlineCount);
+    socket.on('message_error', onMessageError);
+    // 🔴 10-FIX: 3 marta retrydan keyin ham saqlanmagan xabarlar uchun — optimistik
+    // xabarni olib tashlaymiz va foydalanuvchiga xato xabarini ko'rsatamiz.
+    socket.on('message_failed', onMessageError);
     socket.on('partner_typing', onPartnerTyping);
     socket.on('partner_stop_typing', onPartnerStopTyping);
 
-    // Get initial online count
-    if (socket.connected) {
-      socket.emit('get_online_count');
-    }
-
     return () => {
-      clearSearchTimer();
-      stopClock();
-      socket.off('matched', onMatched);
-      socket.off('waiting', onWaiting);
       socket.off('partner_left', onPartnerLeft);
       socket.off('chat_history', onChatHistory);
       socket.off('receive_message', onReceiveMessage);
@@ -272,11 +231,12 @@ export function ChatPage() {
       socket.off('message_sent', onMessageSent);
       socket.off('message_delivered', onMessageDelivered);
       socket.off('match_error', onMatchError);
-      socket.off('online_count', onOnlineCount);
+      socket.off('message_error', onMessageError);
+      socket.off('message_failed', onMessageError);
       socket.off('partner_typing', onPartnerTyping);
       socket.off('partner_stop_typing', onPartnerStopTyping);
     };
-  }, [currentUser, matchUser]);
+  }, [currentUser, matchUser, startSearch]);
 
   const handleNextUser = () => {
     socket.emit('leave_chat');
@@ -350,7 +310,16 @@ export function ChatPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      // 🔴 12-FIX: Safari `audio/webm` ni qo'llamaydi — isTypeSupported bilan tekshiramiz,
+      // qo'llab-quvvatlanmasa `audio/mp4` ga tushamiz (Chrome/Android → webm, Safari → mp4).
+      const AUDIO_MIME = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : '');
+      const mediaRecorder = AUDIO_MIME
+        ? new MediaRecorder(stream, { mimeType: AUDIO_MIME })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -359,7 +328,10 @@ export function ChatPage() {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // 12-FIX: blob type'ni recorder'ning haqiqiy mimeType'idan olamiz —
+        // AUDIO_MIME bo'sh bo'lgan edge case'da ham to'g'ri format saqlanadi
+        // (masalan Safari'da default 'audio/mp4', yoki qo'llab-quvvatlanmaydigan holatda browser default'u)
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
         if (audioBlob.size < 100) return;
 
         setUploadingMedia(true);
@@ -456,7 +428,7 @@ export function ChatPage() {
         body: JSON.stringify({
           reportedTgId: matchUser.tg_id,
           reason,
-          chatContext: messagesRef.current.slice(-5).map(m => `${m.from}: ${m.text}`).join('\n'),
+          chatContext: messages.slice(-5).map(m => `${m.from}: ${m.text}`).join('\n'),
         }),
       });
 
@@ -514,7 +486,7 @@ export function ChatPage() {
 
         {isSearching && !searchTimedOut ? (
           <button
-            onClick={cancelSearch}
+            onClick={handleCancelSearch}
             className="btn-soft flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold"
             style={{ cursor: 'pointer' }}
           >
@@ -557,7 +529,7 @@ export function ChatPage() {
       <Navbar />
 
       {/* Actions bar */}
-      <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <div className="page-header flex items-center gap-2 px-4 py-2 flex-shrink-0">
         <button
           onClick={handleNextUser}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
@@ -566,7 +538,7 @@ export function ChatPage() {
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(124,90,240,0.18)'; }}
         >
           <SkipIcon />
-          Next
+          Keyingi
         </button>
 
         <div className="flex-1" />
@@ -580,7 +552,7 @@ export function ChatPage() {
             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
           >
             <FlagIcon />
-            Report
+            Shikoyat
           </button>
           {reportOpen && (
             <div className="absolute right-0 top-full mt-2 rounded-2xl overflow-hidden z-50 animate-slide-up" style={{ background: 'rgba(20,20,32,0.92)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 16px 50px rgba(0,0,0,0.55)', minWidth: 180 }}>
@@ -766,7 +738,7 @@ export function ChatPage() {
                 sendMessage();
               }
             }}
-            placeholder={uploadingMedia ? 'Yuklanmoqda...' : 'Write a message…'}
+            placeholder={uploadingMedia ? 'Yuklanmoqda...' : 'Xabar yozing…'}
             rows={1}
             disabled={uploadingMedia}
             className="flex-1 bg-transparent text-sm px-4 py-3 resize-none outline-none"

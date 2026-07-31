@@ -1,16 +1,40 @@
-# React + Vite
+# Telegram Chat Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Telegram WebApp uchun frontend — real-time chat, VIP filtrlar, bildirishnomalar va admin panel.
 
-Currently, two official plugins are available:
+## Ishga tushirish
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+cp .env.example .env   # o'z qiymatlaringizni yozing
+npm run dev            # http://localhost:5173
+```
 
-## React Compiler
+## Muhit o'zgaruvchilari (`.env`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| O'zgaruvchi | Majburiy | Tavsif |
+|---|---|---|
+| `VITE_API_URL` | ✅ | Backend API URL (masalan `https://.../api/users`) |
+| `VITE_SOCKET_URL` | ✅ | Socket.io server URL |
+| `VITE_CLOUDINARY_CLOUD_NAME` | ✅ | Cloudinary cloud nomi |
+| `VITE_CLOUDINARY_UPLOAD_PRESET` | ✅ | Cloudinary **unsigned** upload preset |
 
-## Expanding the ESLint configuration
+## ☁️ Cloudinary sozlash (majburiy!)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+> 🔴 **17-FIX:** Rasm va ovozli xabarlar Cloudinary'ga frontend'dan to'g'ridan-to'g'ri (unsigned upload bilan) yuklanadi. Bu **unsigned upload preset** talab qiladi — `ml_default` yoki bo'sh qiymat bilan upload ishlamaydi (`Unauthorized` xatosi).
+
+Sozlash:
+
+1. [Cloudinary dashboard](https://cloudinary.com) → **Settings** → **Upload** tab
+2. **Add upload preset** tugmasini bosing
+3. **Signing Mode: Unsigned** ni tanlang (muhim! Signed bo'lsa server maxfiy kaliti kerak bo'ladi)
+4. Preset nomini `.env` dagi `VITE_CLOUDINARY_UPLOAD_PRESET` ga yozing
+5. Cloud nomingizni `VITE_CLOUDINARY_CLOUD_NAME` ga yozing
+
+Agar preset sozlanmagan bo'lsa, konsolda ogohlantirish chiqadi va foydalanuvchi profil rasmi / media xabarlar yuklab bo'lmaydi.
+
+## Scripts
+
+- `npm run dev` — development server
+- `npm run build` — production build
+- `npm run preview` — build natijasini ko'rish

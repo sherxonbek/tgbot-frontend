@@ -2,7 +2,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://tgbot-backend-r3ei.onr
 const API_URL = `${API_BASE}/api/users`;
 const AUTH_URL = `${API_BASE}/api/auth/telegram`;
 
-const getTelegramInitData = () => {
+export const getTelegramInitData = () => {
   // 1. Telegram WebApp (mobile & desktop embedded browser)
   if (window.Telegram?.WebApp?.initData) {
     return window.Telegram.WebApp.initData;

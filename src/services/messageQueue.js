@@ -133,7 +133,6 @@ class MessageQueue {
     const BATCH_SIZE = 5;
     let completed = 0;
     let failedCount = 0;
-    let startedCount = 0;
 
     // First, filter out expired and max-retried messages
     const valid = pending.filter(msg => {
@@ -157,12 +156,13 @@ class MessageQueue {
         return;
       }
 
-      startedCount += batch.length;
-
       batch.forEach(msg => {
         this.socket.timeout(5000).emit('send_message', msg, (err, response) => {
           completed++;
-          if (err || !response?.success) {
+          // Doimiy xato — chat tugagan (partner yo'q): qayta urinish ma'nosiz
+          if (response?.error === 'not_partner') {
+            this.dequeue(msg._id);
+          } else if (err || !response?.success) {
             failedCount++;
           } else {
             this.dequeue(msg._id); // Remove from queue
