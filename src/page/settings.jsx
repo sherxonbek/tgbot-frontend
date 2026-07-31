@@ -24,14 +24,19 @@ const sectionStyle = {
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.07)',
   borderRadius: 16,
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
 };
 
 const backButtonStyle = {
-  width: 36, height: 36,
+  width: 38, height: 38,
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.08)',
   color: 'rgba(255,255,255,0.7)',
   cursor: 'pointer', flexShrink: 0,
+  backdropFilter: 'blur(10px)',
+  transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
 };
 
 // ── Inline SVG icons ─────────────────────────────────────────────────────────
@@ -270,11 +275,11 @@ export function SettingsPage() {
   const isVip = user?.plan === 'VIP';
 
   return (
-    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: '#0a0a12' }}>
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         <IconButton
           onClick={() => (isEditing ? handleCancel() : navigate('/'))}
@@ -338,42 +343,53 @@ export function SettingsPage() {
       {/* ── Profile Card ─────────────────────────────────────────────────── */}
       <div
         className="mx-4 mt-5 mb-4 rounded-2xl flex flex-col items-center py-6 px-4 relative overflow-hidden"
-        style={sectionStyle}
+        style={{ ...sectionStyle, background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)' }}
       >
         {/* Radial glow */}
-        {isEditing && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(circle at 50% 0%, rgba(124,90,240,0.06) 0%, transparent 60%)' }}
-          />
-        )}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(circle at 50% 0%, rgba(124,90,240,0.1) 0%, transparent 60%)' }}
+        />
 
         <div className="relative" style={{ marginBottom: isEditing ? 4 : 0 }}>
+          {/* Gradient ring around avatar */}
           <div
-            className="relative"
-            onMouseEnter={() => setAvatarHover(true)}
-            onMouseLeave={() => setAvatarHover(false)}
-            style={{ cursor: isEditing ? 'pointer' : 'default' }}
-            onClick={isEditing ? handleAvatarClick : undefined}
+            className="rounded-full p-[2.5px]"
+            style={{
+              background: isVip
+                ? 'linear-gradient(135deg, #f59e0b, #f97316, #fcd34d)'
+                : 'linear-gradient(135deg, #7c5af0, #a78bfa, #c4b5fd)',
+              boxShadow: isVip
+                ? '0 0 18px rgba(245,158,11,0.35)'
+                : '0 0 18px rgba(124,90,240,0.3)',
+            }}
           >
-            <UserAvatar
-              name={user?.name}
-              avatar={currentAvatar || user?.avatar}
-              size={isEditing ? 88 : 76}
-              border={false}
-            />
-            {isEditing && (
-              <div
-                className="absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200"
-                style={{
-                  background: avatarHover ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
-                  opacity: avatarHover || uploading ? 1 : 0,
-                }}
-              >
-                {uploading ? <div style={{ color: '#fff' }}><LoaderSpinner /></div> : <div style={{ color: '#fff', transform: 'scale(1.2)' }}><CameraIcon /></div>}
-              </div>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleFileChange} style={{ display: 'none' }} />
+            <div
+              className="relative rounded-full"
+              onMouseEnter={() => setAvatarHover(true)}
+              onMouseLeave={() => setAvatarHover(false)}
+              style={{ cursor: isEditing ? 'pointer' : 'default' }}
+              onClick={isEditing ? handleAvatarClick : undefined}
+            >
+              <UserAvatar
+                name={user?.name}
+                avatar={currentAvatar || user?.avatar}
+                size={isEditing ? 86 : 74}
+                border={false}
+              />
+              {isEditing && (
+                <div
+                  className="absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200"
+                  style={{
+                    background: avatarHover ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+                    opacity: avatarHover || uploading ? 1 : 0,
+                  }}
+                >
+                  {uploading ? <div style={{ color: '#fff' }}><LoaderSpinner /></div> : <div style={{ color: '#fff', transform: 'scale(1.2)' }}><CameraIcon /></div>}
+                </div>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleFileChange} style={{ display: 'none' }} />
+            </div>
           </div>
           {isVip && (
             <div
@@ -466,7 +482,7 @@ export function SettingsPage() {
         ) : (
           <>
             <div className="mt-3 text-base font-semibold" style={{ color: '#f0effc' }}>{user?.name}</div>
-            <div className="text-xs mt-0.5 mb-1" style={{ color: 'rgba(255,255,255,0.38)' }}>{user?.username}</div>
+            <div className="text-xs mt-0.5 mb-1" style={{ color: 'rgba(255,255,255,0.38)' }}>@{user?.username}</div>
             <div className="flex items-center gap-1.5 text-xs mt-1 mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />

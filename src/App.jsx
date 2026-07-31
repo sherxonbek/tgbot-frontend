@@ -45,18 +45,30 @@ export default function App() {
 
   const { user, loading } = useUser();
 
+  // Aurora background layer (har doim ko'rinadi)
+  const auroraBg = (
+    <div className="aurora" aria-hidden="true">
+      <div className="aurora-orb orb-1" />
+      <div className="aurora-orb orb-2" />
+      <div className="aurora-orb orb-3" />
+    </div>
+  );
+
   // 1. Chiroyli loading ekrani
   if (loading) {
     return (
-      <div className="fade-in-up flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
-        <ScannerHeart />
-        <div className="text-center mt-8" style={{ maxWidth: 240 }}>
-          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
-            Yuklanmoqda...
-          </p>
-          <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            Telegram Chat
-          </p>
+      <div className="fade-in-up flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: 'transparent', color: '#f0effc' }}>
+        {auroraBg}
+        <div className="relative" style={{ zIndex: 1 }}>
+          <ScannerHeart />
+          <div className="text-center mt-8" style={{ maxWidth: 240 }}>
+            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+              Yuklanmoqda...
+            </p>
+            <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              Telegram Chat
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -65,10 +77,13 @@ export default function App() {
   // 3. User topilmadi — ro'yxatdan o'tmagan
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
-        <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          Iltimos, Telegram bot orqali ro'yxatdan o'ting va /start bosing
-        </p>
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: 'transparent', color: '#f0effc' }}>
+        {auroraBg}
+        <div className="relative text-center" style={{ zIndex: 1 }}>
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Iltimos, Telegram bot orqali ro'yxatdan o'ting va /start bosing
+          </p>
+        </div>
       </div>
     );
   }
@@ -78,15 +93,18 @@ export default function App() {
     <BrowserRouter>
       {/* Global matched listener (doimiy mount — socket.connected shartisiz) */}
       <GlobalMatchListener />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/requests" element={<RequestsPage />} />
-        <Route path="/chat-history" element={<ChatHistoryPage />} />
-      </Routes>
+      {auroraBg}
+      <div className="app-content">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
+          <Route path="/chat-history" element={<ChatHistoryPage />} />
+        </Routes>
+      </div>
     </BrowserRouter>
   );
 }

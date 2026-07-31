@@ -1,5 +1,5 @@
-import { Fragment, useState, useEffect, useCallback } from 'react';
-import { BackIcon, ChevronRight, CheckIcon } from '../assets/icon';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { BackIcon, CheckIcon } from '../assets/icon';
 import { IconButton } from '../components/IconButton';
 import { UserAvatar } from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
@@ -13,50 +13,104 @@ import {
   reviewReport,
   sendBroadcast,
 } from '../services/api';
-
-
+import {
+  LayoutDashboard, Users, Flag, Send, Trash2, Shield, Star,
+  Search, ChevronLeft, ChevronRight as ChevronRightIcon,
+  Activity, Ban, Clock, Calendar,
+} from 'lucide-react';
 
 const TABS = [
-  { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'users', label: 'Foydalanuvchilar', icon: '👥' },
-  { key: 'reports', label: 'Shikoyatlar', icon: '🚩' },
-  { key: 'broadcast', label: 'Xabar yuborish', icon: '📢' },
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'users', label: 'Foydalanuvchilar', icon: Users },
+  { key: 'reports', label: 'Shikoyatlar', icon: Flag },
+  { key: 'broadcast', label: 'Xabar yuborish', icon: Send },
 ];
 
-const backButtonStyle = {
-  width: 36, height: 36,
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.7)',
-  cursor: 'pointer', flexShrink: 0,
-};
+function LoaderSpinner({ size = 20 }) {
+  return (
+    <svg className="animate-spin" viewBox="0 0 24 24" fill="none" width={size} height={size}>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-function StatCard({ label, value, icon, color }) {
+/* ─── Animated counter ─────────────────────────────────────────────────────── */
+function CountUp({ value, duration = 900 }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef(null);
+  const prev = useRef(0);
+
+  useEffect(() => {
+    const from = prev.current;
+    const to = Number(value) || 0;
+    prev.current = to;
+    if (from === to) { setDisplay(to); return; }
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (p < 1) ref.current = requestAnimationFrame(tick);
+    };
+    ref.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(ref.current);
+  }, [value, duration]);
+
+  return <>{display.toLocaleString('ru-RU')}</>;
+}
+
+/* ─── StatCard (gradient tile + hover lift + counter) ─────────────────────── */
+function StatCard({ label, value, icon: Icon, color, delay = 0 }) {
   return (
     <div
-      className="rounded-2xl p-4 flex items-center gap-3"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+      className="glass glass-hover card-glow rounded-2xl p-4 flex items-center gap-3 animate-slide-up"
+      style={{ animationDelay: `${delay}ms` }}
     >
       <div
         className="flex items-center justify-center rounded-xl flex-shrink-0"
-        style={{ width: 42, height: 42, background: `${color}20`, color, fontSize: 20 }}
+        style={{
+          width: 44, height: 44,
+          background: `linear-gradient(135deg, ${color}2e, ${color}14)`,
+          border: `1px solid ${color}30`,
+          color,
+          boxShadow: `0 6px 20px ${color}18`,
+        }}
       >
-        {icon}
+        <Icon size={20} />
       </div>
-      <div>
-        <div className="text-2xl font-bold" style={{ color: '#f0effc' }}>{value}</div>
-        <div className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</div>
+      <div className="min-w-0">
+        <div className="text-2xl font-bold leading-tight" style={{ color: '#f0effc' }}>
+          <CountUp value={value} />
+        </div>
+        <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</div>
       </div>
     </div>
   );
 }
 
-function LoaderSpinner() {
+/* ─── Gender bar ───────────────────────────────────────────────────────────── */
+function GenderBar({ label, count, total, icon, color }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
-    <svg className="animate-spin" viewBox="0 0 24 24" fill="none" width="20" height="20">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
+    <div className="flex-1 rounded-2xl p-3 glass card-glow">
+      <div className="flex items-center gap-2 mb-2">
+        <span style={{ fontSize: 18 }}>{icon}</span>
+        <span className="text-sm font-medium" style={{ color: '#f0effc' }}>{label}</span>
+        <span className="ml-auto text-lg font-bold" style={{ color }}>{count}</span>
+      </div>
+      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-1000"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${color}, ${color}99)`,
+            boxShadow: `0 0 12px ${color}66`,
+          }}
+        />
+      </div>
+      <div className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{pct}%</div>
+    </div>
   );
 }
 
@@ -73,53 +127,88 @@ function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex justify-center py-12"><LoaderSpinner /></div>;
+  if (loading) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map(i => <div key={i} className="rounded-2xl h-[86px] skeleton" />)}
+        </div>
+      </div>
+    );
+  }
   if (!stats) return <div className="text-center py-12 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Ma'lumot yuklanmadi</div>;
+
+  const total = stats.totalUsers || 0;
 
   return (
     <div className="p-4 space-y-4">
+      {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Jami foydalanuvchilar" value={stats.totalUsers} icon="👥" color="#a78bfa" />
-        <StatCard label="Online" value={stats.onlineUsers} icon="🟢" color="#6ee7b7" />
-        <StatCard label="VIP" value={stats.vips} icon="⭐" color="#fcd34d" />
-        <StatCard label="Bloklangan" value={stats.bannedUsers} icon="🔨" color="#f87171" />
-        <StatCard label="Kutilayotgan shikoyat" value={stats.pendingReports} icon="🚩" color="#fb923c" />
-        <StatCard label="Bugungi shikoyat" value={stats.todayReports} icon="📅" color="#60a5fa" />
+        <StatCard label="Jami foydalanuvchilar" value={stats.totalUsers} icon={Users} color="#a78bfa" delay={0} />
+        <StatCard label="Online" value={stats.onlineUsers} icon={Activity} color="#6ee7b7" delay={60} />
+        <StatCard label="VIP" value={stats.vips} icon={Star} color="#fcd34d" delay={120} />
+        <StatCard label="Bloklangan" value={stats.bannedUsers} icon={Ban} color="#f87171" delay={180} />
+        <StatCard label="Kutilayotgan shikoyat" value={stats.pendingReports} icon={Clock} color="#fb923c" delay={240} />
+        <StatCard label="Bugungi shikoyat" value={stats.todayReports} icon={Calendar} color="#60a5fa" delay={300} />
       </div>
 
       {/* Gender distribution */}
-      <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="text-sm font-semibold mb-3" style={{ color: '#f0effc' }}>Jins bo'yicha</div>
-        <div className="flex gap-4">
+      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '120ms' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="gradient-text text-sm font-bold">Jins bo'yicha</span>
+          <span className="ml-auto text-[10px] chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
+            {stats.genderStats?.length || 0} guruh
+          </span>
+        </div>
+        <div className="flex gap-3">
           {stats.genderStats?.map(g => (
-            <div key={g._id} className="flex items-center gap-2">
-              <span style={{ fontSize: 20 }}>{g._id === 'Erkak' ? '👨' : '👩'}</span>
-              <span className="text-sm font-medium" style={{ color: '#f0effc' }}>{g._id}</span>
-              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{g.count}</span>
-            </div>
+            <GenderBar
+              key={g._id}
+              label={g._id}
+              count={g.count}
+              total={total}
+              icon={g._id === 'Erkak' ? '👨' : '👩'}
+              color={g._id === 'Erkak' ? '#818cf8' : '#f472b6'}
+            />
           ))}
+          {!stats.genderStats?.length && (
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>Ma'lumot yo'q</div>
+          )}
         </div>
       </div>
 
       {/* Top regions */}
-      <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="text-sm font-semibold mb-3" style={{ color: '#f0effc' }}>Eng ko'p foydalanuvchili viloyatlar</div>
-        <div className="space-y-2">
+      <div className="glass card-glow rounded-2xl p-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
+        <div className="text-sm font-bold mb-3" style={{ color: '#f0effc' }}>Eng ko'p foydalanuvchili viloyatlar</div>
+        <div className="space-y-2.5">
           {stats.regionStats?.map((r, i) => (
-            <div key={r._id} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.3)', width: 20 }}>{i + 1}.</span>
-                <span className="text-sm" style={{ color: '#f0effc' }}>{r._id}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-1.5 rounded-full"
+            <div key={r._id} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="flex items-center justify-center rounded-md text-[10px] font-bold flex-shrink-0"
                   style={{
-                    width: Math.min(100, (r.count / stats.totalUsers) * 200),
-                    background: 'linear-gradient(90deg, #7c5af0, #a78bfa)',
+                    width: 22, height: 22,
+                    background: i < 3 ? `linear-gradient(135deg, rgba(124,90,240,0.3), rgba(124,90,240,0.1))` : 'rgba(255,255,255,0.05)',
+                    border: i < 3 ? '1px solid rgba(124,90,240,0.4)' : '1px solid rgba(255,255,255,0.07)',
+                    color: i < 3 ? '#c4b5fd' : 'rgba(255,255,255,0.4)',
                   }}
-                />
-                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{r.count}</span>
+                >
+                  {i + 1}
+                </span>
+                <span className="text-sm truncate" style={{ color: '#f0effc' }}>{r._id}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (r.count / total) * 100)}%`,
+                      background: 'linear-gradient(90deg, #7c5af0, #a78bfa)',
+                      boxShadow: '0 0 8px rgba(124,90,240,0.4)',
+                    }}
+                  />
+                </div>
+                <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{r.count}</span>
               </div>
             </div>
           ))}
@@ -182,74 +271,95 @@ function AdminUsers() {
 
   const totalPages = Math.ceil(total / 20);
 
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#f0effc', borderRadius: 10, padding: '10px 14px', fontSize: 13, width: '100%',
-    outline: 'none',
-  };
-
   return (
     <div className="p-4">
       {/* Search & Filter */}
       <div className="flex gap-2 mb-4">
-        <div className="flex-1">
+        <div className="flex-1 relative">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
           <input
-            style={inputStyle}
+            className="glass rounded-xl w-full"
+            style={{ padding: '11px 14px 11px 38px', fontSize: 13, color: '#f0effc', outline: 'none', border: '1px solid rgba(255,255,255,0.1)', transition: 'border-color 0.2s, box-shadow 0.2s' }}
             placeholder="Ism yoki ID orqali qidirish..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(124,90,240,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,90,240,0.12)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
           />
         </div>
         <select
-          style={{ ...inputStyle, width: 'auto', minWidth: 100, cursor: 'pointer' }}
+          className="glass rounded-xl"
+          style={{ padding: '11px 12px', fontSize: 13, color: '#f0effc', outline: 'none', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}
           value={planFilter}
           onChange={e => { setPlanFilter(e.target.value); setPage(1); }}
         >
-          <option value="">Hamma plan</option>
-          <option value="Free">Free</option>
-          <option value="VIP">VIP</option>
-          <option value="Admin">Admin</option>
-          <option value="Banned">Banned</option>
+          <option value="" style={{ background: '#12121f' }}>Hamma plan</option>
+          <option value="Free" style={{ background: '#12121f' }}>Free</option>
+          <option value="VIP" style={{ background: '#12121f' }}>VIP</option>
+          <option value="Admin" style={{ background: '#12121f' }}>Admin</option>
+          <option value="Banned" style={{ background: '#12121f' }}>Banned</option>
         </select>
       </div>
 
       {/* Users list */}
       {loading ? (
-        <div className="flex justify-center py-12"><LoaderSpinner /></div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map(i => <div key={i} className="rounded-2xl h-[68px] skeleton" />)}
+        </div>
       ) : users.length === 0 ? (
         <div className="text-center py-12 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Foydalanuvchi topilmadi</div>
       ) : (
         <div className="space-y-2">
-          {users.map(u => (
+          {users.map((u, i) => (
             <div
               key={u.tg_id}
-              className="rounded-2xl p-3 flex items-center gap-3"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              className="glass glass-hover card-glow rounded-2xl p-3 flex items-center gap-3 animate-slide-up"
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
             >
-              <UserAvatar
-                name={u.name}
-                avatar={u.avatar}
-                size={38}
-                border={false}
-              />
+              <div className="relative flex-shrink-0">
+                <UserAvatar name={u.name} avatar={u.avatar} size={40} border={false} />
+                {u.plan === 'Banned' && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full"
+                    style={{ width: 16, height: 16, background: '#ef4444', border: '2px solid #0e0e1a' }}
+                  >
+                    <Ban size={8} style={{ color: '#fff' }} />
+                  </span>
+                )}
+                {u.plan === 'VIP' && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full"
+                    style={{ width: 16, height: 16, background: 'linear-gradient(135deg,#f59e0b,#f97316)', border: '2px solid #0e0e1a' }}
+                  >
+                    <Star size={8} style={{ color: '#1a0a00' }} />
+                  </span>
+                )}
+              </div>
+
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate" style={{ color: '#f0effc' }}>{u.name}</div>
-                <div className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {u.username} · {u.region} · {u.gender} · {u.birthYear}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium truncate" style={{ color: '#f0effc' }}>{u.name}</span>
+                  <span className="chip flex-shrink-0" style={planColors[u.plan]?.chip || planColors.Free.chip}>
+                    {u.plan === 'Admin' && <Shield size={9} />}
+                    {u.plan === 'VIP' && <Star size={9} />}
+                    {u.plan}
+                  </span>
+                </div>
+                <div className="text-[11px] truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  @{u.username || '—'} · {u.region || '—'} · {u.gender || '—'} · {u.birthYear || '—'}
                 </div>
               </div>
 
-              {/* Plan badge + changer */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              {/* Plan changer */}
+              <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                 {['Free', 'VIP', 'Admin', 'Banned'].map(p => (
                   <button
                     key={p}
                     disabled={actionLoading === u.tg_id}
                     onClick={() => handlePlanChange(u.tg_id, p)}
-                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
+                    className="text-[11px] px-2 py-1 rounded-lg font-semibold transition-all"
                     style={{
-                      background: u.plan === p ? planColors[p].bg : 'rgba(255,255,255,0.04)',
+                      background: u.plan === p ? planColors[p].bg : 'rgba(255,255,255,0.03)',
                       color: u.plan === p ? planColors[p].text : 'rgba(255,255,255,0.3)',
                       border: `1px solid ${u.plan === p ? planColors[p].border : 'rgba(255,255,255,0.06)'}`,
                       cursor: actionLoading === u.tg_id ? 'not-allowed' : 'pointer',
@@ -261,16 +371,18 @@ function AdminUsers() {
                 ))}
                 <button
                   onClick={() => handleDelete(u.tg_id, u.name)}
-                  className="text-xs px-2 py-1 rounded-lg"
+                  disabled={actionLoading === u.tg_id}
+                  className="ml-1 flex items-center justify-center rounded-lg transition-all"
                   style={{
+                    width: 28, height: 28,
                     background: 'rgba(248,113,113,0.1)',
                     color: '#f87171',
                     border: '1px solid rgba(248,113,113,0.2)',
-                    cursor: 'pointer',
+                    cursor: actionLoading === u.tg_id ? 'not-allowed' : 'pointer',
                   }}
                   title="O'chirish"
                 >
-                  🗑
+                  {actionLoading === u.tg_id ? <LoaderSpinner size={12} /> : <Trash2 size={13} />}
                 </button>
               </div>
             </div>
@@ -280,37 +392,27 @@ function AdminUsers() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center gap-2 mt-5">
           <button
             disabled={page <= 1}
             onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1.5 rounded-lg text-xs"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: '#f0effc',
-              opacity: page <= 1 ? 0.3 : 1,
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-            }}
+            className="btn-soft flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
           >
-            ←
+            <ChevronLeft size={14} />
+            Oldingi
           </button>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <span className="chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1.5 rounded-lg text-xs"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: '#f0effc',
-              opacity: page >= totalPages ? 0.3 : 1,
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-            }}
+            className="btn-soft flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ opacity: page >= totalPages ? 0.3 : 1, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
           >
-            →
+            Keyingi
+            <ChevronRightIcon size={14} />
           </button>
         </div>
       )}
@@ -319,10 +421,22 @@ function AdminUsers() {
 }
 
 const planColors = {
-  Free: { text: '#6ee7b7', bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.25)' },
-  VIP: { text: '#fcd34d', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.25)' },
-  Admin: { text: '#a78bfa', bg: 'rgba(124,90,240,0.15)', border: 'rgba(124,90,240,0.25)' },
-  Banned: { text: '#f87171', bg: 'rgba(248,113,113,0.15)', border: 'rgba(248,113,113,0.25)' },
+  Free: {
+    text: '#6ee7b7', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)',
+    chip: { background: 'rgba(16,185,129,0.12)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.2)' },
+  },
+  VIP: {
+    text: '#fcd34d', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.28)',
+    chip: { background: 'rgba(245,158,11,0.14)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)' },
+  },
+  Admin: {
+    text: '#a78bfa', bg: 'rgba(124,90,240,0.14)', border: 'rgba(124,90,240,0.28)',
+    chip: { background: 'rgba(124,90,240,0.14)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.25)' },
+  },
+  Banned: {
+    text: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.25)',
+    chip: { background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' },
+  },
 };
 
 // ─── Reports Moderation ─────────────────────────────────────────────────────
@@ -368,74 +482,74 @@ function AdminReports() {
 
   const totalPages = Math.ceil(total / 20);
 
-  const filterBtnStyle = (key) => ({
-    background: statusFilter === key ? 'rgba(124,90,240,0.2)' : 'rgba(255,255,255,0.04)',
-    color: statusFilter === key ? '#a78bfa' : 'rgba(255,255,255,0.5)',
-    border: `1px solid ${statusFilter === key ? 'rgba(124,90,240,0.3)' : 'rgba(255,255,255,0.06)'}`,
-    cursor: 'pointer',
-  });
+  const FILTERS = [
+    { key: 'pending', label: 'Kutilmoqda' },
+    { key: 'reviewed', label: "Ko'rib chiqilgan" },
+    { key: 'dismissed', label: 'Rad etilgan' },
+    { key: 'warned', label: 'Ogohlantirilgan' },
+    { key: 'banned', label: 'Bloklangan' },
+  ];
 
   return (
     <div className="p-4">
       {/* Filters */}
       <div className="flex gap-1.5 mb-4 flex-wrap">
-        {[
-          { key: 'pending', label: 'Kutilmoqda' },
-          { key: 'reviewed', label: 'Ko\'rib chiqilgan' },
-          { key: 'dismissed', label: 'Rad etilgan' },
-          { key: 'warned', label: 'Ogohlantirilgan' },
-          { key: 'banned', label: 'Bloklangan' },
-        ].map(f => (
-          <button
-            key={f.key}
-            onClick={() => { setStatusFilter(f.key); setPage(1); }}
-            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
-            style={filterBtnStyle(f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
+        {FILTERS.map(f => {
+          const active = statusFilter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => { setStatusFilter(f.key); setPage(1); }}
+              className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+              style={{
+                background: active ? 'linear-gradient(135deg, rgba(124,90,240,0.28), rgba(124,90,240,0.12))' : 'rgba(255,255,255,0.04)',
+                color: active ? '#c4b5fd' : 'rgba(255,255,255,0.45)',
+                border: `1px solid ${active ? 'rgba(124,90,240,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                boxShadow: active ? '0 0 16px rgba(124,90,240,0.15)' : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><LoaderSpinner /></div>
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <div key={i} className="rounded-2xl h-[80px] skeleton" />)}
+        </div>
       ) : reports.length === 0 ? (
         <div className="text-center py-12 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Shikoyatlar yo'q</div>
       ) : (
         <div className="space-y-2">
-          {reports.map(r => (
-            <div key={r._id}>
+          {reports.map((r, i) => (
+            <div key={r._id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <div
-                className="rounded-2xl p-3"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  cursor: 'pointer',
-                }}
+                className="glass glass-hover card-glow rounded-2xl p-3.5"
+                style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedReport(selectedReport?._id === r._id ? null : r)}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium" style={{ color: '#f0effc' }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-semibold" style={{ color: '#f0effc' }}>
                     {r.reporter?.name || r.reporterTgId}
                   </span>
-                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>→</span>
-                  <span className="text-xs font-medium" style={{ color: '#f87171' }}>
+                  <ChevronRightIcon size={12} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                  <span className="text-xs font-semibold" style={{ color: '#f87171' }}>
                     {r.reported?.name || r.reportedTgId}
                   </span>
                   <span
-                    className="ml-auto text-xs px-2 py-0.5 rounded-lg"
-                    style={{
-                      background: statusColors[r.status]?.bg || 'rgba(255,255,255,0.05)',
-                      color: statusColors[r.status]?.text || 'rgba(255,255,255,0.4)',
-                    }}
+                    className="chip ml-auto flex-shrink-0"
+                    style={statusColors[r.status]?.chip || statusColors.pending.chip}
                   >
                     {statusLabels[r.status] || r.status}
                   </span>
                 </div>
-                <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <div className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
                   {r.reason}
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                <div className="flex items-center gap-1.5 mt-1.5 text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <Calendar size={10} />
                   {new Date(r.createdAt).toLocaleString()}
                 </div>
               </div>
@@ -443,23 +557,24 @@ function AdminReports() {
               {/* Expanded review panel */}
               {selectedReport?._id === r._id && (
                 <div
-                  className="mx-2 mb-2 rounded-2xl p-3 space-y-2"
-                  style={{ background: 'rgba(124,90,240,0.06)', border: '1px solid rgba(124,90,240,0.12)' }}
+                  className="mx-2 mb-2 rounded-2xl p-3.5 space-y-2.5 animate-slide-up"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(124,90,240,0.08), rgba(124,90,240,0.02))',
+                    border: '1px solid rgba(124,90,240,0.15)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                  }}
                 >
-                  <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    Sabab: <span style={{ color: '#f0effc' }}>{r.reason}</span>
+                  <div className="text-xs space-y-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    <div>Sabab: <span style={{ color: '#f0effc' }}>{r.reason}</span></div>
+                    {r.chatContext && (
+                      <div>Chat kontekst: <span style={{ color: '#f0effc' }}>{r.chatContext}</span></div>
+                    )}
                   </div>
-                  {r.chatContext && (
-                    <div className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                      Chat kontekst: <span style={{ color: '#f0effc' }}>{r.chatContext}</span>
-                    </div>
-                  )}
                   <input
+                    className="glass rounded-xl w-full"
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#f0effc', borderRadius: 10, padding: '8px 12px', fontSize: 12, width: '100%',
-                      outline: 'none',
+                      padding: '9px 12px', fontSize: 12, color: '#f0effc', outline: 'none',
+                      border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
                     }}
                     placeholder="Admin izohi..."
                     value={adminNote}
@@ -467,19 +582,22 @@ function AdminReports() {
                   />
                   <div className="flex gap-1.5 flex-wrap">
                     <button onClick={() => handleReview(r._id, 'dismissed')} disabled={actionLoading === r._id}
-                      className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}>
+                      className="btn-soft text-xs px-3 py-1.5 rounded-lg font-medium" style={{ cursor: 'pointer' }}>
                       ❌ Rad etish
                     </button>
                     <button onClick={() => handleReview(r._id, 'warned')} disabled={actionLoading === r._id}
-                      className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(251,191,36,0.15)', color: '#fcd34d', border: '1px solid rgba(251,191,36,0.25)', cursor: 'pointer' }}>
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(251,191,36,0.14)', color: '#fcd34d', border: '1px solid rgba(251,191,36,0.25)', cursor: 'pointer' }}>
                       ⚠️ Ogohlantirish
                     </button>
                     <button onClick={() => handleReview(r._id, 'banned')} disabled={actionLoading === r._id}
-                      className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(248,113,113,0.14)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer' }}>
                       🔨 Bloklash
                     </button>
                     <button onClick={() => handleReview(r._id, 'reviewed')} disabled={actionLoading === r._id}
-                      className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.25)', cursor: 'pointer' }}>
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(16,185,129,0.14)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.25)', cursor: 'pointer' }}>
                       ✅ Ko'rib chiqildi
                     </button>
                   </div>
@@ -492,17 +610,21 @@ function AdminReports() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center gap-2 mt-5">
           <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f0effc', opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>
-            ←
+            className="btn-soft flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ opacity: page <= 1 ? 0.3 : 1, cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>
+            <ChevronLeft size={14} />
+            Oldingi
           </button>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{page} / {totalPages}</span>
+          <span className="chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
+            {page} / {totalPages}
+          </span>
           <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f0effc', opacity: page >= totalPages ? 0.3 : 1, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}>
-            →
+            className="btn-soft flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ opacity: page >= totalPages ? 0.3 : 1, cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}>
+            Keyingi
+            <ChevronRightIcon size={14} />
           </button>
         </div>
       )}
@@ -511,14 +633,14 @@ function AdminReports() {
 }
 
 const statusColors = {
-  pending: { text: '#fb923c', bg: 'rgba(251,146,60,0.15)' },
-  reviewed: { text: '#6ee7b7', bg: 'rgba(16,185,129,0.15)' },
-  dismissed: { text: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.05)' },
-  warned: { text: '#fcd34d', bg: 'rgba(251,191,36,0.15)' },
-  banned: { text: '#f87171', bg: 'rgba(248,113,113,0.15)' },
+  pending: { chip: { background: 'rgba(251,146,60,0.14)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' } },
+  reviewed: { chip: { background: 'rgba(16,185,129,0.14)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.25)' } },
+  dismissed: { chip: { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' } },
+  warned: { chip: { background: 'rgba(251,191,36,0.14)', color: '#fcd34d', border: '1px solid rgba(251,191,36,0.25)' } },
+  banned: { chip: { background: 'rgba(248,113,113,0.14)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' } },
 };
 const statusLabels = {
-  pending: 'Kutilmoqda', reviewed: 'Ko\'rib chiqilgan', dismissed: 'Rad etilgan',
+  pending: 'Kutilmoqda', reviewed: "Ko'rib chiqilgan", dismissed: 'Rad etilgan',
   warned: 'Ogohlantirilgan', banned: 'Bloklangan',
 };
 
@@ -545,65 +667,77 @@ function AdminBroadcast() {
     }
   };
 
-  const inputStyle = {
+  const selectBase = {
+    padding: '11px 12px', fontSize: 13, color: '#f0effc', outline: 'none', cursor: 'pointer',
+    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
     background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#f0effc', borderRadius: 12, padding: '12px 16px', fontSize: 14,
-    outline: 'none', width: '100%', resize: 'none',
+    transition: 'border-color 0.2s',
   };
-  const selectStyle = { ...inputStyle, cursor: 'pointer', padding: '10px 14px', fontSize: 13 };
+
+  const activeFilterCount = [filter.plan, filter.gender, filter.region].filter(Boolean).length;
 
   return (
     <div className="p-4 space-y-4">
-      <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Xabar matni</div>
+      {/* Composer */}
+      <div className="glass card-glow rounded-2xl p-4 animate-slide-up">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>Xabar matni</span>
+          <span className="chip" style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}>
+            {message.length}/1000
+          </span>
+        </div>
         <textarea
-          style={{ ...inputStyle, minHeight: 120 }}
+          className="rounded-xl w-full"
+          style={{
+            ...selectBase, minHeight: 130, resize: 'none', lineHeight: 1.6, fontSize: 14, padding: '14px 16px',
+          }}
           placeholder="Barcha foydalanuvchilarga yuboriladigan xabarni kiriting..."
           value={message}
           onChange={e => setMessage(e.target.value)}
           maxLength={1000}
         />
-        <div className="text-xs mt-1 text-right" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          {message.length}/1000
-        </div>
       </div>
 
-      <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>Filter (ixtiyoriy)</div>
+      {/* Filters */}
+      <div className="glass card-glow rounded-2xl p-4 space-y-3 animate-slide-up" style={{ animationDelay: '80ms' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>Filter</span>
+          <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>(ixtiyoriy)</span>
+          {activeFilterCount > 0 && (
+            <span className="chip ml-auto" style={{ background: 'rgba(124,90,240,0.15)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.25)' }}>
+              {activeFilterCount} ta faol
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-2">
-          <select style={selectStyle} value={filter.plan} onChange={e => setFilter(f => ({ ...f, plan: e.target.value }))}>
-            <option value="">Barcha plan</option>
-            <option value="Free">Free</option>
-            <option value="VIP">VIP</option>
-            <option value="Admin">Admin</option>
+          <select style={selectBase} value={filter.plan} onChange={e => setFilter(f => ({ ...f, plan: e.target.value }))}>
+            <option value="" style={{ background: '#12121f' }}>Barcha plan</option>
+            <option value="Free" style={{ background: '#12121f' }}>Free</option>
+            <option value="VIP" style={{ background: '#12121f' }}>VIP</option>
+            <option value="Admin" style={{ background: '#12121f' }}>Admin</option>
           </select>
-          <select style={selectStyle} value={filter.gender} onChange={e => setFilter(f => ({ ...f, gender: e.target.value }))}>
-            <option value="">Barcha jins</option>
-            <option value="Erkak">Erkak</option>
-            <option value="Ayol">Ayol</option>
+          <select style={selectBase} value={filter.gender} onChange={e => setFilter(f => ({ ...f, gender: e.target.value }))}>
+            <option value="" style={{ background: '#12121f' }}>Barcha jins</option>
+            <option value="Erkak" style={{ background: '#12121f' }}>Erkak</option>
+            <option value="Ayol" style={{ background: '#12121f' }}>Ayol</option>
           </select>
-          <select style={selectStyle} value={filter.region} onChange={e => setFilter(f => ({ ...f, region: e.target.value }))}>
-            <option value="">Barcha viloyat</option>
+          <select style={selectBase} value={filter.region} onChange={e => setFilter(f => ({ ...f, region: e.target.value }))}>
+            <option value="" style={{ background: '#12121f' }}>Barcha viloyat</option>
             {["Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro", "Farg'ona", "Andijon", "Namangan", "Qashqadaryo", "Surxondaryo", "Jizzax", "Sirdaryo", "Navoiy", "Xorazm", "Qoraqalpog'iston"].map(r => (
-              <option key={r} value={r}>{r}</option>
+              <option key={r} value={r} style={{ background: '#12121f' }}>{r}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {/* Send */}
       <button
         onClick={handleSend}
         disabled={sending || !message.trim()}
-        className="w-full py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
-        style={{
-          background: 'linear-gradient(135deg, #7c5af0, #6d4bd6)',
-          border: 'none', color: '#fff',
-          cursor: sending || !message.trim() ? 'not-allowed' : 'pointer',
-          opacity: sending || !message.trim() ? 0.5 : 1,
-        }}
+        className="btn-glow w-full py-3.5 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2"
+        style={{ cursor: sending || !message.trim() ? 'not-allowed' : 'pointer', opacity: sending || !message.trim() ? 0.5 : 1 }}
       >
-        {sending ? <><LoaderSpinner /> Yuborilmoqda...</> : '📢 Xabarni yuborish'}
+        {sending ? <><LoaderSpinner /> Yuborilmoqda...</> : <><Send size={16} /> Xabarni yuborish</>}
       </button>
 
       {result && (
@@ -611,11 +745,15 @@ function AdminBroadcast() {
           className="rounded-2xl p-4 text-sm animate-bounce-in"
           style={{
             background: 'rgba(16,185,129,0.1)',
-            border: '1px solid rgba(16,185,129,0.2)',
+            border: '1px solid rgba(16,185,129,0.22)',
             color: '#6ee7b7',
+            boxShadow: '0 0 24px rgba(16,185,129,0.08)',
           }}
         >
-          ✅ Xabar {result.recipientCount} ta foydalanuvchiga yuborildi!
+          <div className="flex items-center gap-2 font-medium">
+            <CheckIcon />
+            Xabar {result.recipientCount} ta foydalanuvchiga yuborildi!
+          </div>
           {result.recipients?.length > 0 && (
             <div className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {result.recipients.slice(0, 10).map(r => r.name).join(', ')}
@@ -644,47 +782,55 @@ export function AdminPage() {
 
   if (!user || user.plan !== 'Admin') {
     return (
-      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12' }}>
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: 'transparent' }}>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Siz admin emassiz</p>
       </div>
     );
   }
 
   return (
-    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: '#0a0a12' }}>
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
-      <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <IconButton onClick={() => navigate('/settings')} className="rounded-xl" style={backButtonStyle} aria-label="Go back">
+      <header className="glass-strong flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <IconButton onClick={() => navigate('/settings')} className="rounded-xl" style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', flexShrink: 0 }} aria-label="Go back">
           <BackIcon />
         </IconButton>
         <div>
-          <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>Admin Panel</span>
-          <div className="text-xs" style={{ color: 'rgba(124,90,240,0.6)' }}>#{activeTab}</div>
+          <span className="gradient-text text-sm font-bold">Admin Panel</span>
+          <div className="text-[10px] uppercase tracking-widest" style={{ color: 'rgba(124,90,240,0.65)' }}>
+            {TABS.find(t => t.key === activeTab)?.label}
+          </div>
         </div>
+        <span className="chip ml-auto flex items-center gap-1" style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}>
+          <Shield size={10} />
+          Admin
+        </span>
       </header>
 
-      {/* Tab navigation */}
-      <div
-        className="flex px-2 py-2 gap-1 overflow-x-auto"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0"
-            style={{
-              background: activeTab === tab.key ? 'rgba(124,90,240,0.15)' : 'transparent',
-              color: activeTab === tab.key ? '#a78bfa' : 'rgba(255,255,255,0.4)',
-            }}
-          >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+      {/* Tab navigation — pill with sliding indicator */}
+      <div className="sticky top-[76px] z-10 px-3 pt-3 pb-3" style={{ background: 'transparent' }}>
+        <div className="glass-strong rounded-2xl p-1 flex gap-1">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all flex-1"
+                style={{
+                  background: active ? 'linear-gradient(135deg, #7c5af0, #6d4bd6)' : 'transparent',
+                  color: active ? '#fff' : 'rgba(255,255,255,0.45)',
+                  boxShadow: active ? '0 6px 20px rgba(124,90,240,0.35)' : 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <Icon size={15} />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content */}

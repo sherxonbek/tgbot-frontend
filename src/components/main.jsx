@@ -6,13 +6,6 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { socket, connectSocket } from '../services/socket';
 import { savePartnerToLocalStorage, getBlacklist } from '../utils/blacklist';
 
-const searchButtonStyle = {
-    background: 'rgba(124,90,240,0.12)',
-    border: '1px solid rgba(124,90,240,0.25)',
-    color: '#a78bfa',
-    cursor: 'pointer',
-};
-
 export function Main() {
     const currentUser = useCurrentUser();
     const navigate = useNavigate();
@@ -72,35 +65,48 @@ export function Main() {
 
             <div className="text-center" style={{ maxWidth: 260 }}>
                 {onlineCount !== null && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs mb-3" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)', color: '#a78bfa' }}>
+                    <div
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs glass card-glow"
+                        style={{
+                            background: 'rgba(124,90,240,0.12)',
+                            border: '1px solid rgba(124,90,240,0.22)',
+                            color: '#a78bfa',
+                            boxShadow: '0 0 18px rgba(124,90,240,0.12)',
+                            backdropFilter: 'blur(10px)',
+                        }}
+                    >
                         <Users size={13} />
-                        <span className="font-medium">{onlineCount}</span>
+                        <span className="font-bold">{onlineCount}</span>
                         <span style={{ color: 'rgba(167,139,250,0.6)' }}>online</span>
+                        <span
+                            className="rounded-full"
+                            style={{ width: 6, height: 6, background: '#6ee7b7', boxShadow: '0 0 6px #6ee7b7', display: 'inline-block' }}
+                        />
                     </div>
                 )}
                 {isSearching && (
-                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
+                    <p className="text-sm animate-pulse" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: '1.6' }}>
                         Faol foydalanuvchi qidirilmoqda...
                     </p>
                 )}
             </div>
 
             <button
-                className="flex items-center gap-2 px-8 py-3 rounded-full text-xs font-medium transition-all"
+                className="btn-glow flex items-center gap-2 px-10 py-3.5 rounded-full text-xs font-semibold tracking-wide uppercase"
                 onClick={handleSearch}
                 disabled={isSearching}
                 style={{
-                    ...searchButtonStyle,
                     opacity: isSearching ? 0.7 : 1,
+                    cursor: isSearching ? 'not-allowed' : 'pointer',
                 }}
             >
                 <span
                     className="rounded-full"
                     style={{
-                        width: 6,
-                        height: 6,
-                        background: '#a78bfa',
-                        boxShadow: '0 0 6px #a78bfa',
+                        width: 7,
+                        height: 7,
+                        background: isSearching ? '#fcd34d' : '#a78bfa',
+                        boxShadow: isSearching ? '0 0 8px #fcd34d' : '0 0 8px #a78bfa',
                         display: 'inline-block',
                         animation: 'heartbeat 2s ease-in-out infinite',
                     }}

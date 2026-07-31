@@ -13,11 +13,12 @@ const sectionStyle = {
 };
 
 const backButtonStyle = {
-  width: 36, height: 36,
+  width: 38, height: 38,
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.08)',
   color: 'rgba(255,255,255,0.7)',
   cursor: 'pointer', flexShrink: 0,
+  backdropFilter: 'blur(10px)',
 };
 
 function LoaderSpinner() {
@@ -91,11 +92,11 @@ export function ChatHistoryPage() {
   };
 
   return (
-    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh' }}>
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center gap-3 px-4 pt-4 pb-3 sticky top-0 z-20"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         <IconButton
           onClick={() => navigate('/settings')}
@@ -109,8 +110,8 @@ export function ChatHistoryPage() {
           <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
             Chat tarixi
           </span>
-          <span className="text-xs ml-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            VIP
+          <span className="chip ml-2" style={{ background: 'rgba(245,158,11,0.14)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)' }}>
+            ✨ VIP
           </span>
         </div>
       </header>
@@ -164,17 +165,21 @@ export function ChatHistoryPage() {
       {/* History list */}
       {!loading && history.length > 0 && (
         <div className="flex-1 px-4 py-4 space-y-2">
-          {history.map((item) => (
+          {history.map((item, i) => (
             <div
               key={item.roomId}
-              className="rounded-2xl p-3 flex items-center gap-3 transition-all"
+              className="rounded-2xl p-3 flex items-center gap-3 transition-all animate-slide-up"
               style={{
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.07)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
                 cursor: 'pointer',
+                animationDelay: `${Math.min(i, 8) * 40}ms`,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(124,90,240,0.3)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
             >
               <UserAvatar
                 name={item.partner?.name}

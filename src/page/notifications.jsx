@@ -134,12 +134,15 @@ function NotificationCard({ notification, index, onReadStatusChange }) {
       style={{
         background: isRead && !actionDone
           ? 'rgba(255,255,255,0.02)'
-          : 'linear-gradient(135deg, rgba(124,90,240,0.08) 0%, rgba(124,90,240,0.02) 100%)',
+          : 'linear-gradient(135deg, rgba(124,90,240,0.10) 0%, rgba(124,90,240,0.03) 100%)',
         border: `1px solid ${
           isRead && !actionDone
             ? 'rgba(255,255,255,0.05)'
-            : 'rgba(124,90,240,0.15)'
+            : 'rgba(124,90,240,0.18)'
         }`,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: isRead && !actionDone ? 'none' : '0 6px 24px rgba(124,90,240,0.06)',
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
         transition: 'all 0.35s ease',
@@ -448,11 +451,11 @@ export function NotificationsPage() {
   };
 
   return (
-    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: '#0a0a12' }}>
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* ── Header ──────────────────────────────────────────────────── */}
       <header
-        className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         <button
           onClick={() => navigate('/')}
@@ -462,15 +465,11 @@ export function NotificationsPage() {
         >
           <BackIcon />
         </button>
-        <div className="flex-1">
-          <span className="text-sm font-semibold" style={{ color: '#f0effc' }}>
-            Bildirishnomalar
-          </span>
-          {unreadCount > 0 && (
-            <span className="ml-1.5 text-xs font-medium" style={{ color: '#a78bfa' }}>
-              ({unreadCount})
-            </span>
-          )}
+        <div className="flex-1 min-w-0">
+          <div className="text-lg font-bold leading-tight gradient-text truncate">Bildirishnomalar</div>
+          <div className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {unreadCount > 0 ? `${unreadCount} ta o'qilmagan` : "Barchasi o'qilgan"}
+          </div>
         </div>
 
         {unreadCount > 0 && (

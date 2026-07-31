@@ -8,19 +8,20 @@ import { AnimatedBell } from '../assets/icon';
 import { UserPlus } from 'lucide-react';
 import { socket } from '../services/socket';
 
-const headerStyle = { borderBottom: '1px solid rgba(255,255,255,0.06)' };
 const iconBtnStyle = {
-  width: 36,
-  height: 36,
+  width: 38,
+  height: 38,
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.08)',
   color: 'rgba(255,255,255,0.6)',
   cursor: 'pointer',
-  borderRadius: 10,
+  borderRadius: 12,
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  backdropFilter: 'blur(10px)',
+  transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease',
 };
 
 export function Navbar() {
@@ -89,7 +90,7 @@ export function Navbar() {
 
   if (!user) {
     return (
-      <header className="flex items-center justify-between px-4 pt-4 pb-3" style={headerStyle}>
+      <header className="glass-strong flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
           Yuklanmoqda... (Yoki botdan /start bosing)
         </div>
@@ -98,46 +99,47 @@ export function Navbar() {
   }
 
   return (
-    <header className="flex items-center justify-between px-4 pt-4 pb-3" style={headerStyle}>
-      <div className="flex items-center gap-3">
+    <header className="glass-strong flex items-center justify-between px-4 pt-4 pb-3 sticky top-0 z-20" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-3 min-w-0">
         <UserAvatar
           name={user.name}
           avatar={user.avatar}
-          size={38}
+          size={40}
         />
-        <div>
-          <div className="text-sm font-semibold leading-tight" style={{ color: '#f0effc' }}>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold leading-tight truncate" style={{ color: '#f0effc' }}>
             {user.name}
           </div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
-            {user.username}
+          <div className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>
+            @{user.username}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         {/* Chat requests icon (hamma userlar uchun) */}
         <button
           onClick={handleRequestsClick}
           style={iconBtnStyle}
-          className="flex items-center justify-center transition-all"
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          className="flex items-center justify-center"
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.borderColor = 'rgba(124,90,240,0.35)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
           aria-label="Chat requests"
         >
           <UserPlus size={18} style={{ color: 'rgba(255,255,255,0.6)' }} />
           {pendingCount > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-2xs font-bold"
+              className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-2xs font-bold"
               style={{
-                minWidth: 16,
-                height: 16,
+                minWidth: 17,
+                height: 17,
                 padding: '0 4px',
                 background: 'linear-gradient(135deg, #a78bfa, #7c5af0)',
                 color: '#fff',
                 fontSize: 9,
-                boxShadow: '0 0 8px rgba(167,139,250,0.5)',
+                boxShadow: '0 0 10px rgba(167,139,250,0.6)',
                 animation: 'bounce 1s ease-in-out infinite',
+                border: '1.5px solid #0e0e1a',
               }}
             >
               {pendingCount > 99 ? '99+' : pendingCount}
@@ -149,24 +151,25 @@ export function Navbar() {
         <button
           onClick={handleBellClick}
           style={iconBtnStyle}
-          className="flex items-center justify-center transition-all"
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          className="flex items-center justify-center"
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.borderColor = 'rgba(124,90,240,0.35)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
           aria-label="Notifications"
         >
           <AnimatedBell size={20} ring={unreadCount > 0} />
           {unreadCount > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full text-2xs font-bold"
+              className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-2xs font-bold"
               style={{
-                minWidth: 16,
-                height: 16,
+                minWidth: 17,
+                height: 17,
                 padding: '0 4px',
                 background: 'linear-gradient(135deg, #f87171, #ef4444)',
                 color: '#fff',
                 fontSize: 9,
-                boxShadow: '0 0 8px rgba(248,113,113,0.5)',
+                boxShadow: '0 0 10px rgba(248,113,113,0.6)',
                 animation: unreadCount > 0 ? 'bounce 1s ease-in-out infinite' : 'none',
+                border: '1.5px solid #0e0e1a',
               }}
             >
               {unreadCount > 99 ? '99+' : unreadCount}

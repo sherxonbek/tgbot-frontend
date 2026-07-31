@@ -100,10 +100,10 @@ export function RequestsPage() {
   };
 
   return (
-    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: '#0a0a12' }}>
+    <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      <header className="flex items-center gap-3 px-4 pt-4 pb-3 flex-shrink-0 sticky top-0 z-20"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       >
         <button onClick={() => navigate('/')} className="flex items-center justify-center rounded-xl transition-all"
           style={backBtnStyle} aria-label="Go back"
@@ -156,20 +156,23 @@ export function RequestsPage() {
               return (
                 <div
                   key={req.fromTgId}
-                  className="rounded-2xl p-4 transition-all duration-300"
+                  className="rounded-2xl p-4 transition-all duration-300 animate-slide-up"
                   style={{
                     background: status === 'accepted'
-                      ? 'rgba(16,185,129,0.06)'
+                      ? 'rgba(16,185,129,0.08)'
                       : status === 'declined'
-                        ? 'rgba(239,68,68,0.04)'
-                        : 'rgba(255,255,255,0.03)',
+                        ? 'rgba(239,68,68,0.05)'
+                        : 'rgba(255,255,255,0.04)',
                     border: `1px solid ${
                       status === 'accepted'
-                        ? 'rgba(16,185,129,0.15)'
+                        ? 'rgba(16,185,129,0.2)'
                         : status === 'declined'
-                          ? 'rgba(239,68,68,0.1)'
+                          ? 'rgba(239,68,68,0.12)'
                           : 'rgba(255,255,255,0.07)'
                     }`,
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    boxShadow: status === 'accepted' ? '0 8px 26px rgba(16,185,129,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.05)',
                   }}
                 >
                   <div className="flex items-center gap-3">
@@ -198,10 +201,10 @@ export function RequestsPage() {
                           {req.fromName || 'Noma\'lum'}
                         </span>
                         {req.fromTgId && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                            style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.15)' }}
+                          <span className="chip flex-shrink-0"
+                            style={{ background: 'rgba(124,90,240,0.12)', color: '#a78bfa', border: '1px solid rgba(124,90,240,0.2)' }}
                           >
-                            VIP
+                            ✨ VIP
                           </span>
                         )}
                       </div>
@@ -219,15 +222,16 @@ export function RequestsPage() {
                     <div className="flex items-center gap-2 mt-3 ml-[60px]">
                       <button
                         onClick={() => handleAccept(req)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all"
                         style={{
-                          background: 'rgba(16,185,129,0.12)',
-                          border: '1px solid rgba(16,185,129,0.2)',
+                          background: 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(16,185,129,0.08))',
+                          border: '1px solid rgba(16,185,129,0.25)',
                           color: '#6ee7b7',
                           cursor: 'pointer',
+                          boxShadow: '0 4px 14px rgba(16,185,129,0.08)',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.12)'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.22)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(16,185,129,0.08))'; }}
                       >
                         <Check size={15} />
                         Qabul qilish
