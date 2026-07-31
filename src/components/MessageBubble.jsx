@@ -54,28 +54,32 @@ function VoiceMessage({ mediaUrl, isMe }) {
       />
       <div
         className="flex items-center gap-2"
-        style={{ minWidth: 140, maxWidth: 200 }}
+        style={{ minWidth: 150, maxWidth: 200 }}
       >
         <button
           onClick={togglePlay}
           className="flex items-center justify-center rounded-full flex-shrink-0 transition-all"
           style={{
-            width: 32,
-            height: 32,
-            background: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(124,90,240,0.25)',
+            width: 34,
+            height: 34,
+            background: isMe ? 'rgba(255,255,255,0.22)' : 'linear-gradient(135deg, rgba(124,90,240,0.9), rgba(91,63,212,0.9))',
             color: '#fff',
             border: 'none',
             cursor: 'pointer',
+            boxShadow: isMe ? 'none' : '0 3px 12px rgba(124,90,240,0.4)',
+            transition: 'transform 0.15s ease, box-shadow 0.2s ease',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.06)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
           {playing ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" style={{ marginLeft: 1 }} />}
         </button>
 
         <div className="flex-1 min-w-0">
           <div
-            className="h-1 rounded-full"
+            className="h-1.5 rounded-full"
             style={{
-              background: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.15)',
+              background: isMe ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)',
               overflow: 'hidden',
             }}
           >
@@ -83,7 +87,8 @@ function VoiceMessage({ mediaUrl, isMe }) {
               className="h-full rounded-full transition-all"
               style={{
                 width: `${progress}%`,
-                background: isMe ? '#fff' : '#a78bfa',
+                background: isMe ? '#fff' : 'linear-gradient(90deg, #7c5af0, #a78bfa)',
+                boxShadow: isMe ? 'none' : '0 0 8px rgba(124,90,240,0.5)',
               }}
             />
           </div>
@@ -92,7 +97,7 @@ function VoiceMessage({ mediaUrl, isMe }) {
         <span
           className="text-xs flex-shrink-0"
           style={{
-            color: isMe ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)',
+            color: isMe ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.5)',
             fontVariantNumeric: 'tabular-nums',
             minWidth: 32,
             textAlign: 'right',
@@ -112,6 +117,8 @@ function MessageBubble({ message, prevSame, isMe }) {
   const isVoice = message.type === 'voice' && message.mediaUrl;
   const isText = message.type === 'text' || (!isImage && !isVoice);
 
+  const bubbleRadius = isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
+
   return (
     <div
       className="flex items-end gap-2"
@@ -127,12 +134,17 @@ function MessageBubble({ message, prevSame, isMe }) {
       <div style={{ maxWidth: isVoice ? '80%' : '72%' }}>
         {isText && (
           <div
-            className="text-sm px-3.5 py-2.5 rounded-2xl"
+            className="text-sm px-4 py-2.5 rounded-2xl"
             style={{
-              background: isMe ? 'linear-gradient(135deg, #7c5af0, #5b3fd4)' : 'rgba(255,255,255,0.07)',
+              background: isMe
+                ? 'linear-gradient(135deg, #7c5af0, #5b3fd4)'
+                : 'rgba(255,255,255,0.06)',
+              border: isMe ? 'none' : '1px solid rgba(255,255,255,0.07)',
               color: isMe ? '#fff' : '#f0effc',
-              borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              boxShadow: isMe ? '0 2px 12px rgba(124,90,240,0.35)' : 'none',
+              borderRadius: bubbleRadius,
+              boxShadow: isMe
+                ? '0 4px 18px rgba(124,90,240,0.4), inset 0 1px 0 rgba(255,255,255,0.14)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.05)',
               wordBreak: 'break-word',
               lineHeight: '1.45',
             }}
@@ -145,9 +157,13 @@ function MessageBubble({ message, prevSame, isMe }) {
           <div
             className="rounded-2xl overflow-hidden"
             style={{
-              borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+              borderRadius: bubbleRadius,
+              boxShadow: isMe
+                ? '0 4px 18px rgba(124,90,240,0.35)'
+                : '0 4px 16px rgba(0,0,0,0.3)',
               maxWidth: 260,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
             }}
           >
             <img
@@ -161,7 +177,7 @@ function MessageBubble({ message, prevSame, isMe }) {
               <div
                 className="text-sm px-3 py-2"
                 style={{
-                  background: isMe ? '#5b3fd4' : 'rgba(255,255,255,0.07)',
+                  background: isMe ? '#5b3fd4' : 'rgba(255,255,255,0.06)',
                   color: '#f0effc',
                   borderTop: '1px solid rgba(255,255,255,0.06)',
                 }}
@@ -176,9 +192,14 @@ function MessageBubble({ message, prevSame, isMe }) {
           <div
             className="px-3.5 py-2.5 rounded-2xl"
             style={{
-              background: isMe ? 'linear-gradient(135deg, #7c5af0, #5b3fd4)' : 'rgba(255,255,255,0.07)',
-              borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              boxShadow: isMe ? '0 2px 12px rgba(124,90,240,0.35)' : 'none',
+              background: isMe
+                ? 'linear-gradient(135deg, #7c5af0, #5b3fd4)'
+                : 'rgba(255,255,255,0.06)',
+              border: isMe ? 'none' : '1px solid rgba(255,255,255,0.07)',
+              borderRadius: bubbleRadius,
+              boxShadow: isMe
+                ? '0 4px 18px rgba(124,90,240,0.4), inset 0 1px 0 rgba(255,255,255,0.14)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.05)',
             }}
           >
             <VoiceMessage mediaUrl={message.mediaUrl} isMe={isMe} />

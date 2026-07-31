@@ -425,17 +425,18 @@ export function ChatPage() {
   // Searching / No match page
   if (!matchUser || isSearching) {
     return (
-      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: '#0a0a12', color: '#f0effc' }}>
+      <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: 'transparent', color: '#f0effc' }}>
         <ScannerHeart />
         <div className="text-center mt-6" style={{ maxWidth: 260 }}>
           {onlineCount !== null && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs mb-3" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)', color: '#a78bfa' }}>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.22)', color: '#a78bfa', boxShadow: '0 0 18px rgba(124,90,240,0.12)' }}>
               <Users size={13} />
-              <span className="font-medium">{onlineCount}</span>
+              <span className="font-bold">{onlineCount}</span>
               <span style={{ color: 'rgba(167,139,250,0.6)' }}>online</span>
+              <span className="rounded-full" style={{ width: 6, height: 6, background: '#6ee7b7', boxShadow: '0 0 6px #6ee7b7', display: 'inline-block' }} />
             </div>
           )}
-          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+          <p className="text-sm font-medium animate-pulse" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
             Faol foydalanuvchi qidirilmoqda...
           </p>
           <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -444,8 +445,8 @@ export function ChatPage() {
         </div>
         <button
           onClick={() => navigate('/')}
-          className="mt-8 px-6 py-2.5 rounded-full text-xs font-medium transition-all"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}
+          className="btn-soft mt-8 px-6 py-2.5 rounded-full text-xs font-medium"
+          style={{ cursor: 'pointer' }}
         >
           Asosiy sahifaga qaytish
         </button>
@@ -458,7 +459,7 @@ export function ChatPage() {
       <Navbar />
 
       {/* Actions bar */}
-      <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+      <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(7,7,13,0.55)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <button
           onClick={handleNextUser}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
@@ -484,7 +485,10 @@ export function ChatPage() {
             Report
           </button>
           {reportOpen && (
-            <div className="absolute right-0 top-full mt-2 rounded-xl overflow-hidden z-50" style={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', minWidth: 170 }}>
+            <div className="absolute right-0 top-full mt-2 rounded-2xl overflow-hidden z-50 animate-slide-up" style={{ background: 'rgba(20,20,32,0.92)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 16px 50px rgba(0,0,0,0.55)', minWidth: 180 }}>
+              <div className="px-4 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                Shikoyat sababi
+              </div>
               {REPORT_REASONS.map((reason) => (
                 <button
                   key={reason}
@@ -504,14 +508,14 @@ export function ChatPage() {
 
       {/* Report sent toast */}
       {reportSent && (
-        <div className="px-4 py-2 text-xs text-center" style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>
+        <div className="px-4 py-2 text-xs text-center animate-bounce-in" style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', borderBottom: '1px solid rgba(34,197,94,0.15)' }}>
           ✅ Shikoyatingiz qabul qilindi. Administrator tekshiradi.
         </div>
       )}
 
       {/* Media error toast */}
       {mediaError && (
-        <div className="px-4 py-2 text-xs text-center animate-shake" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
+        <div className="px-4 py-2 text-xs text-center animate-shake" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', borderBottom: '1px solid rgba(239,68,68,0.15)' }}>
           {mediaError}
         </div>
       )}
@@ -520,8 +524,8 @@ export function ChatPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ scrollbarWidth: 'none' }} onClick={() => setReportOpen(false)}>
         {messages.length === 0 && !partnerTyping ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
-            <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.2)' }}>
-              <MessageCircle size={26} style={{ color: 'rgba(167,139,250,0.7)' }} />
+            <div className="flex items-center justify-center rounded-full glass card-glow" style={{ width: 60, height: 60, background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.22)', boxShadow: '0 0 24px rgba(124,90,240,0.12)' }}>
+              <MessageCircle size={28} style={{ color: 'rgba(167,139,250,0.8)' }} />
             </div>
             <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
               Suhbatni boshlang. (Suhbatdosh bilan)
@@ -555,7 +559,7 @@ export function ChatPage() {
       </div>
 
       {/* Input area */}
-      <div className="flex-shrink-0 px-3 py-3 flex items-end gap-2 mb-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,18,0.95)', backdropFilter: 'blur(16px)', paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
+      <div className="flex-shrink-0 px-3 py-3 flex items-end gap-2 mb-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(7,7,13,0.72)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
         {/* VIP: Media buttons (left side) */}
         {currentUser?.plan === 'VIP' && !isRecording && (
           <div className="relative">
@@ -579,12 +583,14 @@ export function ChatPage() {
             {showMediaPicker && (
               <>
                 <div
-                  className="absolute bottom-full left-0 mb-2 rounded-xl overflow-hidden z-50"
+                  className="absolute bottom-full left-0 mb-2 rounded-2xl overflow-hidden z-50 animate-slide-up"
                   style={{
-                    background: '#1a1a2e',
+                    background: 'rgba(20,20,32,0.92)',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-                    minWidth: 140,
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    boxShadow: '0 16px 50px rgba(0,0,0,0.55)',
+                    minWidth: 150,
                   }}
                 >
                   <button
