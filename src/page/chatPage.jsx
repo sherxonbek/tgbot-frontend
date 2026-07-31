@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { SkipIcon, FlagIcon, AnimatedSend } from '../assets/icon';
-import { MessageCircle, Users, Image as ImageIcon, Mic, MicOff, X } from 'lucide-react';
+import { MessageCircle, Users, Image as ImageIcon, Mic, MicOff, X, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ScannerHeart } from '../components/ScannerHeart';
@@ -12,6 +12,7 @@ import { uploadImageDirect, uploadAudioDirect } from '../services/cloudinary';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
+const SEARCH_TIMEOUT_MS = 60000; // 60 soniya — juft topilmasa avtomatik to'xtaydi
 
 function readMessageIds() {
   try {
@@ -51,10 +52,12 @@ export function ChatPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchTimedOut, setSearchTimedOut] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const [onlineCount, setOnlineCount] = useState(null);
   const [mediaError, setMediaError] = useState(''); // Media upload error toast
+  const searchTimerRef = useRef(null);
 
   // Media upload states
   const fileInputRef = useRef(null);
@@ -75,6 +78,41 @@ export function ChatPage() {
   messagesRef.current = messages;
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  // ── Qidiruv timeout + bekor qilish ─────────────────────────────
+  const clearSearchTimer = () => {
+    if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
+  };
+
+  const startSearch = () => {
+    if (!currentUser) return;
+    clearSearchTimer();
+    setIsSearching(true);
+    setSearchTimedOut(false);
+    socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
+    // 60 soniyada juft topilmasa — avtomatik to'xtatamiz
+    searchTimerRef.current = setTimeout(() => {
+      setSearchTimedOut(true);
+      setIsSearching(false);
+      socket.emit('cancel_match');
+    }, SEARCH_TIMEOUT_MS);
+  };
+
+  const cancelSearch = () => {
+    clearSearchTimer();
+    setIsSearching(false);
+    setSearchTimedOut(false);
+    socket.emit('cancel_match');
+    navigate('/');
+  };
+
+  // Sahifa yopilganda ham server queue dan olib tashlaymiz
+  useEffect(() => {
+    return () => {
+      clearSearchTimer();
+      if (socket.connected) socket.emit('cancel_match');
+    };
+  }, []);
 
   // Load chat history when match user is set
   useEffect(() => {
@@ -111,10 +149,12 @@ export function ChatPage() {
     }
 
     const onMatched = (data) => {
+      clearSearchTimer();
       setMatchUser(data.partner);
       sessionStorage.setItem('matchUser', JSON.stringify(data.partner));
       savePartnerToLocalStorage(data.partner?.tg_id);
       setIsSearching(false);
+      setSearchTimedOut(false);
       setMessages([]);
     };
 
@@ -124,10 +164,7 @@ export function ChatPage() {
       setMatchUser(null);
       sessionStorage.removeItem('matchUser');
       setMessages([]);
-      if (currentUser) {
-        setIsSearching(true);
-        socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
-      }
+      startSearch();
     };
 
     const onChatHistory = (history) => {
@@ -198,6 +235,7 @@ export function ChatPage() {
     }
 
     return () => {
+      clearSearchTimer();
       socket.off('matched', onMatched);
       socket.off('waiting', onWaiting);
       socket.off('partner_left', onPartnerLeft);
@@ -218,10 +256,7 @@ export function ChatPage() {
     setMatchUser(null);
     sessionStorage.removeItem('matchUser');
     setMessages([]);
-    if (currentUser) {
-      setIsSearching(true);
-      socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
-    }
+    startSearch();
   };
 
   const sendMessage = () => {
@@ -412,10 +447,7 @@ export function ChatPage() {
     setMatchUser(null);
     sessionStorage.removeItem('matchUser');
     setMessages([]);
-    if (currentUser) {
-      setIsSearching(true);
-      socket.emit('find_match', { tg_id: currentUser.tg_id, blacklist: getBlacklist() });
-    }
+    startSearch();
   };
 
   useEffect(() => {
@@ -427,7 +459,7 @@ export function ChatPage() {
     return (
       <div className="flex flex-col items-center justify-center" style={{ minHeight: '100dvh', background: 'transparent', color: '#f0effc' }}>
         <ScannerHeart />
-        <div className="text-center mt-6" style={{ maxWidth: 260 }}>
+        <div className="text-center mt-6" style={{ maxWidth: 280 }}>
           {onlineCount !== null && (
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs" style={{ background: 'rgba(124,90,240,0.12)', border: '1px solid rgba(124,90,240,0.22)', color: '#a78bfa', boxShadow: '0 0 18px rgba(124,90,240,0.12)' }}>
               <Users size={13} />
@@ -436,20 +468,66 @@ export function ChatPage() {
               <span className="rounded-full" style={{ width: 6, height: 6, background: '#6ee7b7', boxShadow: '0 0 6px #6ee7b7', display: 'inline-block' }} />
             </div>
           )}
-          <p className="text-sm font-medium animate-pulse" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
-            Faol foydalanuvchi qidirilmoqda...
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            Iltimos, ozgina kuting...
-          </p>
+
+          {isSearching && !searchTimedOut && (
+            <>
+              <p className="text-sm font-medium animate-pulse" style={{ color: 'rgba(255,255,255,0.6)', lineHeight: '1.6' }}>
+                Faol foydalanuvchi qidirilmoqda...
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                Iltimos, ozgina kuting...
+              </p>
+            </>
+          )}
+
+          {searchTimedOut && (
+            <div className="animate-bounce-in">
+              <p className="text-sm font-medium" style={{ color: '#fcd34d', lineHeight: '1.6' }}>
+                Qidiruv vaqti tugadi
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Hozircha bo'sh foydalanuvchi topilmadi. Keyinroq qayta urinib ko'ring.
+              </p>
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => navigate('/')}
-          className="btn-soft mt-8 px-6 py-2.5 rounded-full text-xs font-medium"
-          style={{ cursor: 'pointer' }}
-        >
-          Asosiy sahifaga qaytish
-        </button>
+
+        {isSearching && !searchTimedOut ? (
+          <button
+            onClick={cancelSearch}
+            className="btn-soft flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold"
+            style={{ cursor: 'pointer' }}
+          >
+            <X size={15} />
+            Qidiruvni bekor qilish
+          </button>
+        ) : searchTimedOut ? (
+          <div className="flex items-center gap-2 mt-8">
+            <button
+              onClick={() => navigate('/')}
+              className="btn-soft px-5 py-2.5 rounded-full text-xs font-medium"
+              style={{ cursor: 'pointer' }}
+            >
+              Asosiy sahifaga qaytish
+            </button>
+            <button
+              onClick={startSearch}
+              className="btn-glow flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold"
+              style={{ cursor: 'pointer' }}
+            >
+              <RotateCcw size={13} />
+              Qayta urinish
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/')}
+            className="btn-soft mt-8 px-6 py-2.5 rounded-full text-xs font-medium"
+            style={{ cursor: 'pointer' }}
+          >
+            Asosiy sahifaga qaytish
+          </button>
+        )}
       </div>
     );
   }
