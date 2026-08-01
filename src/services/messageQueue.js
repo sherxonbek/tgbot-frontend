@@ -19,6 +19,7 @@ class MessageQueue {
   constructor() {
     this.socket = null;
     this.isRunning = false;
+    this.isFlushing = false; // 🔴 RETRY-FIX: concurrent flush guard
     this.flushTimeout = null;
     this.maxRetries = 5;
     this.retryDelay = 2000; // 2 seconds between retries
@@ -77,30 +78,44 @@ class MessageQueue {
     this._save(pending);
   }
 
+  // 🔴 LISTENER-LEAK-FIX: start() socket.js da HAR bir 'connect' event'da chaqiriladi
+  // (va connectSocket() da ham). Avval har chaqiruvda yangi anonim `connect`/`reconnect`
+  // listener qo'shilardi — qayta ulanishlar soni bilan listenerlar to'planib ketar, har
+  // connect'da N marta flush() ishlar, xotira o'sib borardi. Endi handlerlar bir marta
+  // nomlangan holda ro'yxatdan o'tadi (off bilan olib tashlash mumkin) — dublikat yo'q.
+  _bindHandlers(socket) {
+    if (this._handlersBound) return;
+    this._handlersBound = true;
+
+    this._onConnect = () => this.flush();
+    this._onReconnect = () => this.flush();
+    this._onMessageSent = ({ tempId }) => {
+      if (tempId) this.dequeue(tempId);
+    };
+
+    socket.on('connect', this._onConnect);
+    socket.on('reconnect', this._onReconnect);
+    socket.on('message_sent', this._onMessageSent);
+  }
+
   /**
    * Start the queue processor
    */
   start(socket) {
     this.socket = socket;
     this.isRunning = true;
+    this.isFlushing = false; // 🔴 RETRY-FIX: eski stuck flush holatini tozalash
+    this._bindHandlers(socket);
 
     // Flush when connected
     if (socket.connected) {
       this.flush();
     }
 
-    // Listen for reconnection
-    socket.on('connect', () => this.flush());
-    socket.on('reconnect', () => this.flush());
-
-    // Listen for message_sent to dequeue
-    this._onMessageSent = ({ tempId }) => {
-      if (tempId) this.dequeue(tempId);
-    };
-    socket.on('message_sent', this._onMessageSent);
-
     // Periodic flush every 5 seconds
-    this.flushTimeout = setInterval(() => this.flush(), 5000);
+    if (!this.flushTimeout) {
+      this.flushTimeout = setInterval(() => this.flush(), 5000);
+    }
   }
 
   /**
@@ -108,12 +123,16 @@ class MessageQueue {
    */
   stop() {
     this.isRunning = false;
+    this.isFlushing = false; // 🔴 RETRY-FIX
     if (this.flushTimeout) {
       clearInterval(this.flushTimeout);
       this.flushTimeout = null;
     }
-    if (this.socket && this._onMessageSent) {
+    if (this.socket && this._handlersBound) {
+      this.socket.off('connect', this._onConnect);
+      this.socket.off('reconnect', this._onReconnect);
       this.socket.off('message_sent', this._onMessageSent);
+      this._handlersBound = false;
     }
     this.socket = null;
   }
@@ -125,6 +144,10 @@ class MessageQueue {
    */
   flush() {
     if (!this.socket?.connected || !this.isRunning) return;
+    // 🔴 RETRY-FIX: flush allaqachon ishlayotgan bo'lsa, qayta chaqirmaymiz.
+    // (5s interval + connect/reconnect event + enqueue() bir vaqtda flush
+    //  chaqirishi mumkin — guard bo'lmasa bir xil xabarlar DUBLIKAT yuboriladi.)
+    if (this.isFlushing) return;
 
     const pending = this.getPending();
     if (pending.length === 0) return;
@@ -132,9 +155,9 @@ class MessageQueue {
     const now = Date.now();
     const BATCH_SIZE = 5;
     let completed = 0;
-    let failedCount = 0;
 
-    // First, filter out expired and max-retried messages
+    // Expired va max-retried xabarlarni filtrlaymiz; qolganlarining retry
+    // hisoblagichini oshiramiz.
     const valid = pending.filter(msg => {
       if (now - msg._createdAt > 24 * 60 * 60 * 1000) return false;
       if (msg._retries >= this.maxRetries) return false;
@@ -142,17 +165,22 @@ class MessageQueue {
       return true;
     });
 
-    if (valid.length === 0) {
-      this._save([]); // Clean up expired messages
-      return;
-    }
+    // 🔴 RETRY-FIX: incrementlangan retry sonini DARHOL saqlaymiz. Ilgari
+    // `msg._retries++` faqat xotirada bajarilar, `_save` esa localStorage'dan
+    // QAYTA o'qir edi (eski qiymatlar) — natijada retry hisoblagichi hech qachon
+    // o'smas, xabarlar 24 soatgacha abadiy qayta yuborilar, maxRetries=5 esa
+    // umuman ishlamas edi.
+    this._save(valid);
 
+    if (valid.length === 0) return; // Hammasi expired/max-retried — tozalandi
+    this.isFlushing = true;
     const totalToSend = valid.length;
 
     const processNextBatch = (startIdx) => {
       const batch = valid.slice(startIdx, startIdx + BATCH_SIZE);
       if (batch.length === 0) {
-        // All batches processed - check if done
+        // Barcha batchlar yuborildi — guard'ni bo'shatamiz
+        this.isFlushing = false;
         return;
       }
 
@@ -163,15 +191,14 @@ class MessageQueue {
           if (response?.error === 'not_partner') {
             this.dequeue(msg._id);
           } else if (err || !response?.success) {
-            failedCount++;
+            // Muvaffaqiyatsiz — queue'da qoladi (retry soni allaqachon saqlangan)
           } else {
-            this.dequeue(msg._id); // Remove from queue
+            this.dequeue(msg._id); // Muvaffaqiyatli — queue'dan o'chirish
           }
 
-          // All callbacks processed — no-op since dequeue() already persisted
-          if (completed === totalToSend && failedCount > 0) {
-            // Ensure failed messages are persisted with updated retry count
-            this._save(this.getPending());
+          // Barcha ACK'lar qaytdi — guard'ni bo'shatamiz
+          if (completed === totalToSend) {
+            this.isFlushing = false;
           }
         });
       });

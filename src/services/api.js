@@ -129,11 +129,19 @@ export async function fetchCurrentUser() {
 }
 
 // Nisbiy URL'larni to'liq URL ga aylantirish (frontend != backend domain)
+// 🔴 MED-FIX (XSS): faqat http(s), nisbiy yo'llar va img-xavfsiz `data:image/`
+// qabul qilinadi. `javascript:`, `data:text/html` kabi sxemalar (zararlangan
+// avatar/DB) img src'ga o'tib qolmasligi uchun bo'sh qaytariladi — komponent
+// initials fallback ko'rsatadi.
+// Eslatma: `data:image/` ruxsat beriladi, chunki settings.jsx FileReader orqali
+// yuklanayotgan rasmni darhol preview qiladi (img src'da xavfsiz).
 export function resolveAvatarUrl(url) {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (typeof url !== 'string') return '';
+  if (/^https?:\/\//i.test(url)) return url;
   if (url.startsWith('/')) return `${API_BASE}${url}`;
-  return url;
+  if (/^data:image\//i.test(url)) return url;
+  return '';
 }
 
 export async function updateUserProfile(tgId, data) {

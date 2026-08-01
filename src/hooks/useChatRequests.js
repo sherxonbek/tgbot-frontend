@@ -11,6 +11,10 @@ export function useChatRequests(currentUser) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestSent, setRequestSent] = useState(null); // { targetTgId, targetName }
   const [requestDeclined, setRequestDeclined] = useState(null); // { targetTgId, targetName }
+  // 🔴 PROTO-FIX: server `match_error` eventi orqali xatolarni yuboradi (cb'siz emit
+  // qilinganda ham). Ilgari bu yerda faqat loading flag'lar tozalangani uchun VIP
+  // "So'rov" tugmasiga bosganda busy/already/rate xatolari HEQ QANDAY ko'rinmasdi.
+  const [requestError, setRequestError] = useState(null); // { message }
   const [loading, setLoading] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
 
@@ -45,6 +49,11 @@ export function useChatRequests(currentUser) {
       ['match_error', ({ message }) => {
         setOnlineLoading(false);
         setLoading(false);
+        // Xatoni 3 soniya toast ko'rinishida ko'rsatamiz (so'rov yuborish xatolari)
+        if (message) {
+          setRequestError({ message });
+          setTimeout(() => setRequestError(null), 3000);
+        }
       }],
     ];
 
@@ -104,6 +113,7 @@ export function useChatRequests(currentUser) {
     pendingRequests,
     requestSent,
     requestDeclined,
+    requestError,
     loading,
     onlineLoading,
     loadOnlineUsers,

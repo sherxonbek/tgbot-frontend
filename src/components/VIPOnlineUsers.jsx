@@ -13,6 +13,7 @@ export function VIPOnlineUsers({ currentUser, forceVisible = false }) {
     onlineUsers,
     requestSent,
     requestDeclined,
+    requestError,
     onlineLoading,
     loadOnlineUsers,
     sendChatRequest,
@@ -162,6 +163,20 @@ export function VIPOnlineUsers({ currentUser, forceVisible = false }) {
             }}
           >
             ✅ {requestSent.targetName} ga so'rov yuborildi
+          </div>
+        )}
+
+        {/* Error toast (busy/already/rate) — 🔴 PROTO-FIX: server match_error eventi orqali */}
+        {requestError && (
+          <div
+            className="mb-2 px-3 py-1.5 rounded-xl text-[10px] animate-shake"
+            style={{
+              background: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.22)',
+              color: '#f87171',
+            }}
+          >
+            ⚠️ {requestError.message}
           </div>
         )}
 
