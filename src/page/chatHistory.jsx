@@ -6,6 +6,7 @@ import { UserAvatar } from '../components/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { fetchChatHistory } from '../services/api';
+import { isVip } from '../utils/plan';
 
 const sectionStyle = {
   background: 'rgba(255,255,255,0.04)',
@@ -57,7 +58,8 @@ export function ChatHistoryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user?.plan !== 'VIP') {
+    // 🔴 ADMIN-FIX: adminlar ham VIP huquqiga ega
+    if (!isVip(user?.plan)) {
       navigate('/');
       return;
     }

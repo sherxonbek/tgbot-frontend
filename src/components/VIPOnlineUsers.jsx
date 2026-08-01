@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { RefreshCw, Ban, Send, Users, Clock } from 'lucide-react';
 import { UserAvatar } from './Avatar';
 import { useChatRequests } from '../hooks/useChatRequests';
+import { isVip } from '../utils/plan';
 
 /**
  * VIPOnlineUsers — VIP userlar uchun online userlarni ko'rish va so'rov yuborish
@@ -94,7 +95,8 @@ export function VIPOnlineUsers({ currentUser, forceVisible = false }) {
     resetInactivityTimer();
   };
 
-  if (currentUser?.plan !== 'VIP' && !forceVisible) return null;
+  // 🔴 ADMIN-FIX: adminlar ham VIP huquqiga ega
+  if (!isVip(currentUser?.plan) && !forceVisible) return null;
 
   return (
     <div>

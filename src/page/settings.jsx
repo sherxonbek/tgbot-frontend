@@ -13,6 +13,7 @@ import {
   updateUserProfile, uploadImage, resolveAvatarUrl,
   updatePreferredGender, updateVIPPreferences,
 } from '../services/api';
+import { isVip as hasVipPlan } from '../utils/plan';
 
 const REGIONS = [
   "Toshkent sh.", "Toshkent vil.", "Samarqand", "Buxoro",
@@ -275,7 +276,8 @@ export function SettingsPage() {
     boxShadow: '0 0 0 3px rgba(124,90,240,0.15)',
   };
 
-  const isVip = user?.plan === 'VIP';
+  // 🔴 ADMIN-FIX: adminlar ham VIP huquqiga ega (plan === 'VIP' || plan === 'Admin')
+  const isVip = hasVipPlan(user?.plan);
 
   return (
     <div className="slide-in-right flex flex-col" style={{ minHeight: '100dvh', background: 'transparent' }}>

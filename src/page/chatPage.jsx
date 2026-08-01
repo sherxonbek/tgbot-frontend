@@ -11,6 +11,7 @@ import { socket } from '../services/socket';
 import { savePartnerToLocalStorage } from '../utils/blacklist';
 import { useMatchmaking } from '../hooks/useMatchmaking';
 import { uploadImageDirect, uploadAudioDirect } from '../services/cloudinary';
+import { isVip } from '../utils/plan';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const REPORT_REASONS = ['Spam', 'Zo`rovonlik', 'Behayo kontent', 'Soxta profil', 'Reklama', 'Boshqa'];
@@ -630,8 +631,8 @@ export function ChatPage() {
 
       {/* Input area */}
       <div className="flex-shrink-0 px-3 py-3 flex items-end gap-2 mb-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(7,7,13,0.72)', backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
-        {/* VIP: Media buttons (left side) */}
-        {currentUser?.plan === 'VIP' && !isRecording && (
+        {/* VIP: Media buttons (left side) — 🔴 ADMIN-FIX: adminlar ham VIP huquqiga ega */}
+        {isVip(currentUser?.plan) && !isRecording && (
           <div className="relative">
             <button
               onClick={() => setShowMediaPicker(!showMediaPicker)}

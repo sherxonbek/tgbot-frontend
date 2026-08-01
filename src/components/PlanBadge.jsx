@@ -1,6 +1,24 @@
 import { StarIcon } from '../assets/icon';
+import { Shield } from 'lucide-react';
 
+// 🔴 ADMIN-FIX: Admin uchun alohida badge (Free o'rniga) — adminlar ham VIP huquqiga ega
 export function PlanBadge({ plan }) {
+  if (plan === 'Admin') {
+    return (
+      <span
+        className="flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full heartbeat"
+        style={{
+          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+          color: '#fff',
+          letterSpacing: '0.05em',
+          boxShadow: '0 0 12px rgba(239,68,68,0.4)',
+        }}
+      >
+        <Shield size={13} />
+        Admin
+      </span>
+    );
+  }
   return plan === 'VIP' ? (
     <span
       className="flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full heartbeat"

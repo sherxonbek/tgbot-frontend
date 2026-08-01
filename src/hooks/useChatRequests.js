@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { socket } from '../services/socket';
+import { isVip } from '../utils/plan';
 
 /**
  * useChatRequests — Chat so'rovlarini boshqarish uchun hook
@@ -71,16 +72,16 @@ export function useChatRequests(currentUser) {
     };
   }, [socket.connected, currentUser?.tg_id]);
 
-  // Online userlarni yuklash (faqat VIP)
+  // Online userlarni yuklash (faqat VIP — adminlar ham VIP huquqiga ega)
   const loadOnlineUsers = useCallback(() => {
-    if (!socket.connected || currentUser?.plan !== 'VIP') return;
+    if (!socket.connected || !isVip(currentUser?.plan)) return;
     setOnlineLoading(true);
     socket.emit('get_online_users');
   }, [currentUser?.plan]);
 
-  // So'rov yuborish (faqat VIP)
+  // So'rov yuborish (faqat VIP — adminlar ham VIP huquqiga ega)
   const sendChatRequest = useCallback((targetTgId) => {
-    if (!socket.connected || currentUser?.plan !== 'VIP') return;
+    if (!socket.connected || !isVip(currentUser?.plan)) return;
     socket.emit('send_chat_request', { targetTgId });
   }, [currentUser?.plan]);
 
